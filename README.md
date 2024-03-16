@@ -144,3 +144,6 @@ See [development setup](https://github.com/jellyfin/jellyfin-vue/wiki/Contributi
 # Contributing 🤝
 
 See [Contributing](https://github.com/jellyfin/jellyfin-vue/wiki/Contributing) guide.
+
+
+est
