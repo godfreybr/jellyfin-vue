@@ -1,5 +1,5 @@
 {
-  "defaultServerURLs": [],
-  "allowServerSelection": true,
+  "defaultServerURLs": ["https://jellynet.lcars-systems.com"],
+  "allowServerSelection": false,
   "routerMode": "hash"
 }
