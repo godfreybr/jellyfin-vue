@@ -25,7 +25,7 @@ import IMdiVolumeLow from 'virtual:icons/mdi/volume-low';
 import IMdiVolumeMedium from 'virtual:icons/mdi/volume-medium';
 import IMdiVolumeMute from 'virtual:icons/mdi/volume-mute';
 import { computed } from 'vue';
-import { playbackManager } from '@/store/playbackManager';
+import { playbackManager } from '@/store/playback-manager';
 
 const sliderValue = computed({
   get() {
@@ -42,13 +42,13 @@ const icon = computed(() => {
   } else if (playbackManager.currentVolume >= 80) {
     return IMdiVolumeHigh;
   } else if (
-    playbackManager.currentVolume < 80 &&
-    playbackManager.currentVolume >= 25
+    playbackManager.currentVolume < 80
+    && playbackManager.currentVolume >= 25
   ) {
     return IMdiVolumeMedium;
   } else if (
-    playbackManager.currentVolume < 25 &&
-    playbackManager.currentVolume >= 1
+    playbackManager.currentVolume < 25
+    && playbackManager.currentVolume >= 1
   ) {
     return IMdiVolumeLow;
   } else {

@@ -61,7 +61,7 @@
 <script setup lang="ts">
 import { BaseItemKind, ImageType, type BaseItemDto } from '@jellyfin/sdk/lib/generated-client';
 import { SwiperSlide } from 'swiper/vue';
-import { useRoute } from 'vue-router';
+import { useRoute } from 'vue-router/auto';
 import { useResponsiveClasses } from '@/composables/use-responsive-classes';
 import { apiStore } from '@/store/api';
 import { getBlurhash } from '@/utils/images';
@@ -112,7 +112,7 @@ function updateBackdrop(index: number): void {
   if (props.pageBackdrop) {
     const hash = getBlurhash(props.items[index], ImageType.Backdrop);
 
-    route.meta.backdrop = { blurhash: hash };
+    route.meta.backdrop.blurhash = hash;
   }
 }
 

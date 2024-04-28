@@ -2,31 +2,33 @@
   <Backdrop />
   <VApp>
     <RouterView v-slot="{ Component, route }">
-      <TransitionView>
+      <JTransition
+        :name="route.meta.transition?.enter ?? defaultTransition"
+        :mode="defaultTransitionMode">
         <Suspense @resolve="apploaded = true">
           <div
             :key="route.meta.layout"
-            style="transform-origin: center"
-            class="h-100">
+            class="h-100 j-transition">
             <component
               :is="getLayoutComponent(route.meta.layout)"
               :key="route.meta.layout">
-              <TransitionView>
+              <JTransition
+                :name="route.meta.transition?.enter ?? defaultTransition"
+                :mode="defaultTransitionMode">
                 <Suspense suspensible>
                   <div
-                    :key="route.path"
-                    style="transform-origin: center"
-                    class="h-100">
+                    :key="route.name ?? route.path"
+                    class="h-100 j-transition">
                     <component
                       :is="Component"
-                      :key="route.path" />
+                      :key="route.name ?? route.path" />
                   </div>
                 </Suspense>
-              </TransitionView>
+              </JTransition>
             </component>
           </div>
         </Suspense>
-      </TransitionView>
+      </JTransition>
     </RouterView>
     <Snackbar />
     <ConfirmDialog />
@@ -35,14 +37,19 @@
 </template>
 
 <script setup lang="ts">
+/**
+ * TODO: Remove j-transition classes from this file once https://github.com/vuejs/core/issues/5148 is fixed
+ */
 import { whenever } from '@vueuse/core';
-import { ref, type Component as VueComponent } from 'vue';
-import type { RouteMeta } from 'vue-router';
+import { shallowRef, type Component as VueComponent } from 'vue';
+import type { RouteMeta } from 'vue-router/auto';
 import DefaultLayout from '@/layouts/default.vue';
 import FullPageLayout from '@/layouts/fullpage.vue';
 import ServerLayout from '@/layouts/server.vue';
 
-const apploaded = ref(false);
+const apploaded = shallowRef(false);
+const defaultTransition = 'slide-x-reverse';
+const defaultTransitionMode = 'out-in';
 
 /**
  * - SPLASHSCREEN REMOVAL -
@@ -96,6 +103,5 @@ function getLayoutComponent(layout: RouteMeta['layout']): VueComponent {
       return DefaultLayout;
     }
   }
-
 }
 </script>

@@ -10,9 +10,10 @@ import type { App } from 'vue';
 import RemotePluginAuthInstance from './auth';
 import RemotePluginSDKInstance from './sdk';
 import RemotePluginSocketInstance from './socket';
-import { isNil } from '@/utils/validation';
+import { isNil, sealed } from '@/utils/validation';
 import { getJSONConfig } from '@/utils/external-config';
 
+@sealed
 class RemotePlugin {
   public readonly auth = RemotePluginAuthInstance;
   public readonly sdk = RemotePluginSDKInstance;
@@ -33,8 +34,8 @@ export function createPlugin(): {
       /**
        * `remote` is readonly but this is the one place it should actually be set
        */
-      (app.config.globalProperties.$remote as typeof remote) =
-        remote;
+      (app.config.globalProperties.$remote as typeof remote)
+        = remote;
 
       const auth = remote.auth;
       const config = await getJSONConfig();
@@ -46,7 +47,7 @@ export function createPlugin(): {
       const missingServers = defaultServers
         .filter((serverUrl) => {
           const server = auth.servers.find(
-            (lsServer) => lsServer.PublicAddress === serverUrl
+            lsServer => lsServer.PublicAddress === serverUrl
           );
 
           return isNil(server);

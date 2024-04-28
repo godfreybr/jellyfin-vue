@@ -4,18 +4,19 @@ import { computed, watch } from 'vue';
 import auth from '../auth';
 import sdk from '../sdk';
 import type { WebSocketMessage } from './types';
-import { isNil } from '@/utils/validation';
+import { isNil, sealed } from '@/utils/validation';
 
+@sealed
 class RemotePluginSocket {
   /**
    * == STATE ==
    */
   private readonly _socketUrl = computed(() => {
     if (
-      auth.currentUserToken &&
-      auth.currentServer &&
-      sdk.deviceInfo.id &&
-      sdk.api?.basePath
+      auth.currentUserToken
+      && auth.currentServer
+      && sdk.deviceInfo.id
+      && sdk.api?.basePath
     ) {
       const socketParameters = new URLSearchParams({
         api_key: auth.currentUserToken,
@@ -27,26 +28,26 @@ class RemotePluginSocket {
         .replace('http:', 'ws:');
     }
   });
+
   private readonly _keepAliveMessage = 'KeepAlive';
   private readonly _forceKeepAliveMessage = 'ForceKeepAlive';
   /**
    * Formats the message to be sent to the socket
    */
   private readonly _webSocket = useWebSocket(this._socketUrl, {
-    heartbeat: false,
-    autoReconnect: { retries: () => true },
-    immediate: true,
-    autoClose: false
+    autoReconnect: { retries: () => true }
   });
+
   private readonly _parsedmsg = computed<WebSocketMessage | undefined>(() => destr(this._webSocket.data.value));
   public readonly message = computed<WebSocketMessage | undefined>((previous) => {
-    if (this._parsedmsg.value?.MessageType === this._keepAliveMessage ||
-      this._parsedmsg.value?.MessageType === this._forceKeepAliveMessage) {
+    if (this._parsedmsg.value?.MessageType === this._keepAliveMessage
+      || this._parsedmsg.value?.MessageType === this._forceKeepAliveMessage) {
       return previous;
     }
 
     return this._parsedmsg.value;
   });
+
   public readonly isConnected = computed(() => this._webSocket.status.value === 'OPEN');
 
   /**
@@ -85,8 +86,7 @@ class RemotePluginSocket {
       if (this._parsedmsg.value?.MessageType === this._forceKeepAliveMessage) {
         this.sendToSocket(this._keepAliveMessage);
       }
-    }, { flush: 'sync' }
-    );
+    }, { flush: 'sync' });
   }
 }
 

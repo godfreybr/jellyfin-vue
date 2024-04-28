@@ -1,16 +1,17 @@
 import type en from '@/../locales/en.json';
+import type { JTransitionProps } from '@/components/lib/JTransition.vue';
 import type { RemotePlugin } from '@/plugins/remote/types';
 
 /**
- * The object that represents RouteMeta is defined at @/plugins/vue/router/middleware/meta
+ * The object that represents RouteMeta is defined at @/plugins/router/middleware/meta
  */
 interface BackdropPayload {
   blurhash?: string;
   opacity?: number;
 }
 interface RouteTransition {
-  enter: string;
-  leave?: string;
+  enter: NonNullable<JTransitionProps['name']>;
+  leave?: JTransitionProps['name'];
 }
 declare module 'vue-router' {
   interface RouteMeta {
@@ -19,7 +20,7 @@ declare module 'vue-router' {
     transition?: RouteTransition;
     readonly admin: boolean;
     title?: string | null;
-    backdrop: BackdropPayload;
+    readonly backdrop: BackdropPayload;
   }
 }
 
@@ -41,4 +42,3 @@ declare module 'vue-i18n' {
  */
 
 export { };
-

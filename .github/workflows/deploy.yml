@@ -3,8 +3,10 @@ name: Deploy 🏗️
 on:
   workflow_run:
     workflows:
+      # Deploy on pull requests
       - Quality checks 👌🧪
-      - Unstable release 🪲📦
+      # Deploy on all releases
+      - Release 🌍
     types:
       - completed
 
@@ -17,7 +19,7 @@ jobs:
 
     steps:
       - name: Download workflow artifact ⬇️
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v4.1.7
         with:
           run-id: ${{ github.event.workflow_run.id }}
           github-token: ${{ secrets.JF_BOT_TOKEN }}
@@ -45,7 +47,7 @@ jobs:
 
     steps:
       - name: Get PR context ⬇️
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v4.1.7
         id: pr_context
         with:
           run-id: ${{ github.event.workflow_run.id }}

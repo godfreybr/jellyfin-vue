@@ -1,25 +1,24 @@
 <template>
-  <VFadeTransition>
+  <JTransition>
     <div
-      v-if="blurhash"
-      :key="`backdrop-${blurhash}`"
+      v-if="route.meta.backdrop.blurhash"
+      :key="`backdrop-${route.meta.backdrop.blurhash}`"
       class="backdrop sizing">
       <BlurhashCanvas
-        :hash="blurhash"
+        :hash="route.meta.backdrop.blurhash"
         :width="32"
         :height="32"
         class="sizing" />
     </div>
-  </VFadeTransition>
+  </JTransition>
 </template>
 
 <script setup lang="ts">
 import { computed } from 'vue';
-import { useRoute } from 'vue-router';
+import { useRoute } from 'vue-router/auto';
 
 const route = useRoute();
-const blurhash = computed(() => route.meta.backdrop?.blurhash);
-const opacity = computed(() => route.meta.backdrop?.opacity || 0.25);
+const opacity = computed(() => route.meta.backdrop.opacity);
 </script>
 
 <style lang="scss" scoped>

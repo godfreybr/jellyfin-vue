@@ -76,7 +76,7 @@ import IMdiShuffle from 'virtual:icons/mdi/shuffle';
 import { computed, ref } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { getTotalEndsAtTime } from '@/utils/time';
-import { InitMode, playbackManager } from '@/store/playbackManager';
+import { InitMode, playbackManager } from '@/store/playback-manager';
 
 const props = withDefaults(
   defineProps<{
@@ -103,8 +103,8 @@ const sourceText = computed(() => {
       return unknownSource;
     }
     case InitMode.Item: {
-      return playbackManager.currentItem?.AlbumId ===
-        playbackManager.initiator?.Id
+      return playbackManager.currentItem?.AlbumId
+        === playbackManager.initiator?.Id
         ? t('playingFrom', {
           item: playbackManager.initiator?.Name
         })
@@ -114,8 +114,8 @@ const sourceText = computed(() => {
       return t('playinginShuffle');
     }
     case InitMode.ShuffleItem: {
-      return playbackManager.currentItem?.AlbumId ===
-        playbackManager.initiator?.Id
+      return playbackManager.currentItem?.AlbumId
+        === playbackManager.initiator?.Id
         ? t('playingItemInShuffle', {
           item: playbackManager.initiator?.Name
         })

@@ -31,11 +31,16 @@ const excludeViewTypes = new Set([
 ]);
 </script>
 
+<route lang="yaml">
+meta:
+  transparentLayout: true
+</route>
+
 <script setup lang="ts">
 import type { BaseItemDto } from '@jellyfin/sdk/lib/generated-client';
 import { computed } from 'vue';
 import { useI18n } from 'vue-i18n';
-import { useRoute } from 'vue-router';
+import { useRoute } from 'vue-router/auto';
 import { isNil } from '@/utils/validation';
 import { CardShapes, fetchIndexPage, getShapeFromCollectionType } from '@/utils/items';
 
@@ -50,15 +55,14 @@ const { t } = useI18n();
 const route = useRoute();
 
 route.meta.title = t('home');
-route.meta.transparentLayout = true;
 
 const { carousel, nextUp, views, resumeVideo, latestPerLibrary } = await fetchIndexPage();
 
 const latestMediaSections = computed(() => {
   return views.value.map((userView) => {
     if (
-      userView.CollectionType &&
-      !excludeViewTypes.has(userView.CollectionType)
+      userView.CollectionType
+      && !excludeViewTypes.has(userView.CollectionType)
     ) {
       return {
         title: t('latestLibrary', { libraryName: userView.Name }),

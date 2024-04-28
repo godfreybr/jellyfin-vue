@@ -6,12 +6,13 @@ import { ImageType, ItemFields, type BaseItemDto } from '@jellyfin/sdk/lib/gener
 import { getItemsApi } from '@jellyfin/sdk/lib/utils/api/items-api';
 import { getLibraryApi } from '@jellyfin/sdk/lib/utils/api/library-api';
 import { reactive, watch } from 'vue';
-import { isArray, isObj, isStr } from '@/utils/validation';
+import { isArray, isObj, isStr, sealed } from '@/utils/validation';
 import { remote } from '@/plugins/remote';
 
 /**
  * Class that we can use to transform to BaseItem when necessary
  */
+@sealed
 class CachedResponse {
   public wasArray: boolean | undefined;
   public ids: BaseItemDto['Id'][] = [];
@@ -23,7 +24,7 @@ class CachedResponse {
 
     if (this.ofBaseItem) {
       this.wasArray = isArray(payload);
-      this.ids = this.wasArray ? (payload as BaseItemDto[]).map((i) => i.Id) : [(payload as BaseItemDto).Id];
+      this.ids = this.wasArray ? (payload as BaseItemDto[]).map(i => i.Id) : [(payload as BaseItemDto).Id];
     } else {
       this.rawResult = payload;
     }
@@ -33,6 +34,7 @@ class CachedResponse {
 /**
  * == CLASS CONSTRUCTOR ==
  */
+@sealed
 class ApiStore {
   /**
    * == STATE SECTION ==
@@ -54,8 +56,8 @@ class ApiStore {
   public readonly getItemById = (id: BaseItemDto['Id']): BaseItemDto | undefined =>
     this._items.get(id);
 
-  public readonly getItemsById = (ids: BaseItemDto['Id'][]): Array<BaseItemDto | undefined> =>
-    ids.map((id) => this._items.get(id));
+  public readonly getItemsById = (ids: BaseItemDto['Id'][]): (BaseItemDto | undefined)[] =>
+    ids.map(id => this._items.get(id));
 
   public readonly getCachedRequest = (funcName: string, params: string): CachedResponse | undefined =>
     this._requests.get(funcName)?.get(params);
@@ -63,9 +65,9 @@ class ApiStore {
   public readonly getRequest = (cache?: CachedResponse): BaseItemDto | BaseItemDto[] | unknown => {
     if (cache) {
       if (cache.ofBaseItem) {
-        const array = cache.ids.map((r) => this.getItemById(r));
+        const array = cache.ids.map(r => this.getItemById(r));
 
-        return cache.wasArray ? array : array[0] ;
+        return cache.wasArray ? array : array[0];
       }
 
       return cache.rawResult;
@@ -108,7 +110,7 @@ class ApiStore {
       this._requests.set(funcName, new Map([[params, toSave]]));
     }
 
-    return this.getRequest(this.getCachedRequest(funcName, params) as CachedResponse) as T;
+    return this.getRequest(this.getCachedRequest(funcName, params)) as T;
   };
 
   public readonly itemDelete = async (itemId: string): Promise<void> => {
@@ -174,29 +176,29 @@ class ApiStore {
         }
 
         if (
-          MessageType === 'LibraryChanged' &&
-          'ItemsUpdated' in Data &&
-          isArray(Data.ItemsUpdated)
+          MessageType === 'LibraryChanged'
+          && 'ItemsUpdated' in Data
+          && isArray(Data.ItemsUpdated)
         ) {
           // Update items when metadata changes
           const itemsToUpdate = Data.ItemsUpdated.filter(
             (item: unknown): item is string => isStr(item)
-          ).filter((itemId) => this._items.has(itemId));
+          ).filter(itemId => this._items.has(itemId));
 
           await this._update(itemsToUpdate);
         } else if (
-          MessageType === 'UserDataChanged' &&
-          'UserDataList' in Data &&
-          isArray(Data.UserDataList)
+          MessageType === 'UserDataChanged'
+          && 'UserDataList' in Data
+          && isArray(Data.UserDataList)
         ) {
           // Update items when their userdata is changed (like, mark as watched, etc)
           const itemsToUpdate = Data.UserDataList.filter(
             (updatedData: unknown): updatedData is { ItemId: string } => {
               if (
-                isObj(updatedData) &&
-                updatedData &&
-                'ItemId' in updatedData &&
-                isStr(updatedData.ItemId)
+                isObj(updatedData)
+                && updatedData
+                && 'ItemId' in updatedData
+                && isStr(updatedData.ItemId)
               ) {
                 return this._items.has(updatedData.ItemId);
               }

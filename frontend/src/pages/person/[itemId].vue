@@ -101,13 +101,11 @@
             <VCol
               cols="12"
               md="7">
-              <!-- eslint-disable vue/no-v-html -
-                Output is properly sanitized using sanitizeHtml -->
               <span
                 v-if="item.Overview"
-                class="item-overview"
-                v-html="sanitizeHtml(item.Overview, true)" />
-              <!-- eslint-enable vue/no-v-html -->
+                class="item-overview">
+                <JSafeHtml :html="item.Overview" markdown />
+              </span>
             </VCol>
             <VCol
               cols="12"
@@ -176,14 +174,13 @@ import { getLibraryApi } from '@jellyfin/sdk/lib/utils/api/library-api';
 import { getUserLibraryApi } from '@jellyfin/sdk/lib/utils/api/user-library-api';
 import { format } from 'date-fns';
 import { computed, ref } from 'vue';
-import { useRoute } from 'vue-router';
+import { useRoute } from 'vue-router/auto';
 import { defaultSortOrder as sortBy } from '@/utils/items';
 import { getBlurhash } from '@/utils/images';
-import { sanitizeHtml } from '@/utils/html';
 import { useDateFns } from '@/composables/use-datefns';
 import { useBaseItem } from '@/composables/apis';
 
-const route = useRoute<'/person/[itemId]'>();
+const route = useRoute('/person/[itemId]');
 
 const activeTab = ref(4);
 

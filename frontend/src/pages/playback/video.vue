@@ -59,7 +59,7 @@
                 <template v-else>
                   <span>{{ playbackManager.currentItem?.Name }}</span>
                 </template>
-                <br />
+                <br>
                 <span
                   v-if="playbackManager.currentItem?.RunTimeTicks"
                   class="text-subtitle-2 text--secondary text-truncate">
@@ -126,48 +126,38 @@ meta:
 
 <script setup lang="ts">
 import { BaseItemKind } from '@jellyfin/sdk/lib/generated-client';
-import {
-  useFullscreen,
-  useMagicKeys,
-  useTimeoutFn,
-  whenever
-} from '@vueuse/core';
+import { useTimeoutFn } from '@vueuse/core';
 import IMdiChevronDown from 'virtual:icons/mdi/chevron-down';
 import IMdiClose from 'virtual:icons/mdi/close';
-import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
+import { computed, onBeforeUnmount, onMounted, shallowRef, watch } from 'vue';
 import { playbackGuard } from '@/plugins/router/middlewares/playback';
 import {
-  mediaControls,
-  mediaElementRef
+  mediaControls
 } from '@/store';
-import { playbackManager } from '@/store/playbackManager';
-import { playerElement } from '@/store/playerElement';
+import { playbackManager } from '@/store/playback-manager';
+import { playerElement } from '@/store/player-element';
 import { getEndsAtTime } from '@/utils/time';
+import { usePlayback } from '@/composables/use-playback';
 
 defineOptions({
   beforeRouteEnter: playbackGuard
 });
 
-/**
- * - iOS's Safari fullscreen API is only available for the video element
- */
-const fullscreen = useFullscreen().isSupported.value
-  ? useFullscreen(undefined, { autoExit: true })
-  : useFullscreen(mediaElementRef, { autoExit: true });
-const keys = useMagicKeys();
-const osd = ref(true);
-const subtitleSelectionButtonOpened = ref(false);
-const playbackSettingsButtonOpened = ref(false);
+const { fullscreen } = usePlayback();
+
+const osd = shallowRef(true);
+const subtitleSelectionButtonOpened = shallowRef(false);
+const playbackSettingsButtonOpened = shallowRef(false);
 const staticOverlay = computed(
   () =>
-    playbackManager.isPaused ||
-    subtitleSelectionButtonOpened.value ||
-    playbackSettingsButtonOpened.value
+    playbackManager.isPaused
+    || subtitleSelectionButtonOpened.value
+    || playbackSettingsButtonOpened.value
 );
 
 const overlay = computed({
   get: () => staticOverlay.value || osd.value,
-  set: (newValue) => (osd.value = newValue)
+  set: newValue => (osd.value = newValue)
 });
 
 const timeout = useTimeoutFn(() => {
@@ -183,29 +173,16 @@ function handleMouseMove(): void {
 }
 
 onBeforeUnmount(() => {
-  if (playerElement.isFullscreenVideoPlayer) {
-    playbackManager.stop();
-  }
-
   /**
    * We need to destroy JASSUB so the canvas can be recreated in the other view
    */
   playerElement.freeSsaTrack();
-  playerElement.isFullscreenMounted = false;
+  playerElement.isFullscreenMounted.value = false;
 });
 
 onMounted(() => {
-  playerElement.isFullscreenMounted = true;
+  playerElement.isFullscreenMounted.value = true;
 });
-
-whenever(keys.space, playbackManager.playPause);
-whenever(keys.k, playbackManager.playPause);
-whenever(keys.right, playbackManager.skipForward);
-whenever(keys.l, playbackManager.skipForward);
-whenever(keys.left, playbackManager.skipBackward);
-whenever(keys.j, playbackManager.skipBackward);
-whenever(keys.f, fullscreen.toggle);
-whenever(keys.m, playbackManager.toggleMute);
 
 watch(staticOverlay, (val) => {
   if (val) {

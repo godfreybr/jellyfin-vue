@@ -150,19 +150,21 @@
               @click="onPersonEdit(item)">
               <template #prepend>
                 <VAvatar>
-                  <VImg
+                  <JImg
                     v-if="item.Id && item.PrimaryImageTag"
                     :src="
                       remote.sdk.api?.getItemImageUrl(
                         item.Id,
                         ImageType.Primary
                       )
-                    " />
-                  <VIcon
-                    v-else
-                    class="bg-grey-darken-3">
-                    <IMdiAccount />
-                  </VIcon>
+                    ">
+                    <template #placeholder>
+                      <VIcon
+                        class="bg-grey-darken-3">
+                        <IMdiAccount />
+                      </VIcon>
+                    </template>
+                  </JImg>
                 </VAvatar>
               </template>
               <template #append>
@@ -225,24 +227,25 @@ import { getUserLibraryApi } from '@jellyfin/sdk/lib/utils/api/user-library-api'
 import { AxiosError } from 'axios';
 import { format, formatISO } from 'date-fns';
 import { pick, set } from 'lodash-es';
-import { computed, ref, watch } from 'vue';
+import { computed, ref } from 'vue';
 import { useI18n } from 'vue-i18n';
+import { watchImmediate } from '@vueuse/core';
 import { isArray } from '@/utils/validation';
 import { remote } from '@/plugins/remote';
 import { useSnackbar } from '@/composables/use-snackbar';
 import { useDateFns } from '@/composables/use-datefns';
 
-type ContentOption = {
+interface ContentOption {
   value: string;
   key: string;
-};
+}
 
 const props = defineProps<{ itemId: string }>();
 
 const emit = defineEmits<{
-  save: [];
+  'save': [];
   'update:forceRefresh': [];
-  cancel: [];
+  'cancel': [];
 }>();
 
 const { t } = useI18n();
@@ -297,7 +300,7 @@ const tagLine = computed({
   get: () => metadata.value?.Taglines?.[0] ?? '',
   set: (v) => {
     if (metadata.value) {
-      if (!metadata.value?.Taglines) {
+      if (!metadata.value.Taglines) {
         metadata.value.Taglines = [];
       }
 
@@ -310,7 +313,7 @@ const tagLine = computed({
  * Fetch data ancestors for the current item
  */
 async function getData(): Promise<void> {
-  let itemInfo = (
+  const itemInfo = (
     await remote.sdk.newUserApi(getUserLibraryApi).getItem({
       userId: remote.auth.currentUserId ?? '',
       itemId: props.itemId
@@ -323,8 +326,8 @@ async function getData(): Promise<void> {
     })
   ).data;
 
-  contentOptions.value =
-    options?.ContentTypeOptions?.map((r) => {
+  contentOptions.value
+    = options.ContentTypeOptions?.map((r) => {
       if (r.Name) {
         return {
           // The option name
@@ -334,14 +337,14 @@ async function getData(): Promise<void> {
         };
       }
     }).filter((r): r is ContentOption => r !== undefined) ?? [];
-  contentOption.value =
-    contentOptions.value.find((r) => r.value === options.ContentType) ??
-    contentOptions.value[0];
-  contentType.value = options.ContentType ?? contentOption.value?.value;
+  contentOption.value
+    = contentOptions.value.find(r => r.value === options.ContentType)
+    ?? contentOptions.value[0];
+  contentType.value = options.ContentType ?? contentOption.value.value;
 
   metadata.value = itemInfo;
 
-  if (!metadata.value?.Id) {
+  if (!metadata.value.Id) {
     return;
   }
 
@@ -350,7 +353,7 @@ async function getData(): Promise<void> {
     itemId: metadata.value.Id
   });
   const libraryInfo = ancestors.data.find(
-    (index) => index.Type === 'CollectionFolder'
+    index => index.Type === 'CollectionFolder'
   );
 
   if (!libraryInfo?.Id) {
@@ -364,12 +367,12 @@ async function getData(): Promise<void> {
  * Get genres associated with the current item
  */
 async function getGenres(parentId: string): Promise<void> {
-  genres.value =
-    (
+  genres.value
+    = (
       await remote.sdk.newUserApi(getGenresApi).getGenres({
         parentId
       })
-    ).data.Items?.map((index) => index.Name).filter(
+    ).data.Items?.map(index => index.Name).filter(
       (genre): genre is string => !!genre
     ) ?? [];
 }
@@ -450,7 +453,7 @@ async function saveMetadata(): Promise<void> {
     }
 
     await remote.sdk.newUserApi(getItemUpdateApi).updateItem({
-      itemId: metadata.value?.Id,
+      itemId: metadata.value.Id,
       baseItemDto: item
     });
     await saveContentType();
@@ -509,7 +512,7 @@ function onPersonSave(item: BaseItemPerson): void {
   }
 
   if (item.Id) {
-    metadata.value.People = metadata.value.People.map((p) =>
+    metadata.value.People = metadata.value.People.map(p =>
       p.Id === item.Id ? item : p
     );
   } else {
@@ -531,5 +534,5 @@ function onPersonDel(index: number): void {
   metadata.value.People.splice(index, 1);
 }
 
-watch(() => props.itemId, getData, { immediate: true });
+watchImmediate(() => props.itemId, getData);
 </script>

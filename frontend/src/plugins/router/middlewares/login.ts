@@ -2,8 +2,9 @@ import type {
   RouteLocationNormalized,
   RouteLocationPathRaw,
   RouteLocationRaw
-} from 'vue-router';
-import { effectScope, watch } from 'vue';
+} from 'vue-router/auto';
+import { effectScope } from 'vue';
+import { watchImmediate } from '@vueuse/core';
 import { remote } from '@/plugins/remote';
 import { isNil } from '@/utils/validation';
 import { getJSONConfig } from '@/utils/external-config';
@@ -22,11 +23,11 @@ async function ensureServer(): Promise<void> {
 
   await new Promise<void>((resolve) => {
     scope.run(() => {
-      watch(() => remote.auth.currentServer, () => {
+      watchImmediate(() => remote.auth.currentServer, () => {
         if (remote.auth.currentServer) {
           resolve();
         }
-      }, { immediate: true, flush: 'sync' });
+      });
     });
   });
   scope.stop();
@@ -40,6 +41,10 @@ export async function loginGuard(
 ): Promise<boolean | RouteLocationRaw> {
   let destinationRoute: RouteLocationPathRaw | undefined;
   const jsonConfig = await getJSONConfig();
+
+  if (!isNil(remote.auth.currentServer) && !isNil(remote.auth.currentUser) && !isNil(remote.auth.currentUserToken) && routes.has(to.path)) {
+    destinationRoute = { path: '/', replace: true };
+  }
 
   if (remote.auth.servers.length <= 0 && jsonConfig.defaultServerURLs.length <= 0) {
     destinationRoute = { path: serverAddUrl, replace: true };

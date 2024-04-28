@@ -12,16 +12,17 @@
             <VAvatar
               size="160"
               class="ml-2">
-              <VImg
-                v-if="person?.Id && person?.PrimaryImageTag"
+              <JImg
                 :src="
-                  $remote.sdk.api?.getItemImageUrl(person.Id, ImageType.Primary)
-                " />
-              <VIcon
-                v-else
-                class="bg-grey-darken-3">
-                <IMdiAccount />
-              </VIcon>
+                  person?.Id && $remote.sdk.api?.getItemImageUrl(person.Id, ImageType.Primary)
+                ">
+                <template #placeholder>
+                  <VIcon
+                    class="bg-grey-darken-3">
+                    <IMdiAccount />
+                  </VIcon>
+                </template>
+              </JImg>
             </VAvatar>
           </VCol>
           <VCol>
@@ -76,15 +77,16 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref, watch } from 'vue';
+import { computed, ref } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { type BaseItemPerson, ImageType } from '@jellyfin/sdk/lib/generated-client';
+import { watchImmediate } from '@vueuse/core';
 
 const props = defineProps<{ person: BaseItemPerson | undefined }>();
 
 const emit = defineEmits<{
   'update:person': [person: BaseItemPerson];
-  close: [];
+  'close': [];
 }>();
 
 const { t } = useI18n();
@@ -99,12 +101,11 @@ const options = computed(() => [
   { text: t('writer'), value: 'Writer' }
 ]);
 
-watch(
+watchImmediate(
   () => props.person,
   (person) => {
     editState.value = { ...person };
-  },
-  { immediate: true }
+  }
 );
 
 /**

@@ -3,7 +3,6 @@
  * for TypeScript compiler (check tsconfig.json)
  * https://caniuse.com/mdn-javascript_operators_await_top_level
  */
-
 import { createApp } from 'vue';
 import { routes } from 'vue-router/auto-routes';
 import Root from '@/App.vue';
@@ -17,14 +16,10 @@ import { vuetify } from '@/plugins/vuetify';
  * - GLOBAL STYLES -
  */
 import 'inter-ui/inter-variable.css';
-/**
- * TODO: Re-enable once Vuetify is gone
- */
-/*
- * import 'uno.css';
- * import 'virtual:unocss-devtools';
- */
-import '@unocss/reset/tailwind.css';
+/* eslint-disable-next-line import/no-extraneous-dependencies */
+import '@unocss/reset/tailwind-compat.css';
+import 'uno.css';
+import 'virtual:unocss-devtools';
 import '@/assets/styles/global.scss';
 
 /**
@@ -38,6 +33,8 @@ const app = createApp(Root);
 /**
  * We add routes at this point instead of in the router plugin to avoid circular references
  * in components. At this stage, we're sure plugins are initiated.
+ *
+ * TODO: Track https://github.com/posva/unplugin-vue-router/pull/157 for proper fix
  */
 for (const route of routes) {
   router.addRoute(route);

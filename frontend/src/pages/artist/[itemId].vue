@@ -117,13 +117,11 @@
                     <VCol
                       cols="12"
                       md="7">
-                      <!-- eslint-disable vue/no-v-html -
-                        Output is properly sanitized using sanitizeHtml -->
                       <span
                         v-if="item.Overview"
-                        class="item-overview"
-                        v-html="sanitizeHtml(item.Overview, true)" />
-                      <!-- eslint-enable vue/no-v-html -->
+                        class="item-overview">
+                        <JSafeHtml :html="item.Overview" markdown />
+                      </span>
                     </VCol>
                   </VCol>
                 </VRow>
@@ -154,17 +152,16 @@ import { getItemsApi } from '@jellyfin/sdk/lib/utils/api/items-api';
 import { getLibraryApi } from '@jellyfin/sdk/lib/utils/api/library-api';
 import { getUserLibraryApi } from '@jellyfin/sdk/lib/utils/api/user-library-api';
 import { computed, ref } from 'vue';
-import { useRoute } from 'vue-router';
+import { useRoute } from 'vue-router/auto';
 import { msToTicks } from '@/utils/time';
 import { defaultSortOrder as sortBy } from '@/utils/items';
 import { getBlurhash } from '@/utils/images';
-import { sanitizeHtml } from '@/utils/html';
 import { useBaseItem } from '@/composables/apis';
 
 const SINGLE_MAX_LENGTH_MS = 600_000;
 const EP_MAX_LENGTH_MS = 1_800_000;
 
-const route = useRoute<'/artist/[itemId]'>();
+const route = useRoute('/artist/[itemId]');
 
 const activeTab = ref(0);
 
@@ -198,30 +195,29 @@ const { data: musicVideos } = await useBaseItem(getItemsApi, 'getItems')(() => (
   includeItemTypes: [BaseItemKind.MusicVideo]
 }));
 
-
 const singles = computed<BaseItemDto[]>(() =>
   discography.value.filter(
-    (album) =>
-      (album?.RunTimeTicks ?? album?.CumulativeRunTimeTicks ?? 0) <=
-      msToTicks(SINGLE_MAX_LENGTH_MS)
+    album =>
+      (album.RunTimeTicks ?? album.CumulativeRunTimeTicks ?? 0)
+      <= msToTicks(SINGLE_MAX_LENGTH_MS)
   )
 );
 
 const eps = computed(() =>
   discography.value.filter(
-    (album) =>
-      (album?.RunTimeTicks ?? album?.CumulativeRunTimeTicks ?? 0) >
-      msToTicks(SINGLE_MAX_LENGTH_MS) &&
-      (album?.RunTimeTicks ?? album?.CumulativeRunTimeTicks ?? 0) <=
-      msToTicks(EP_MAX_LENGTH_MS)
+    album =>
+      (album.RunTimeTicks ?? album.CumulativeRunTimeTicks ?? 0)
+      > msToTicks(SINGLE_MAX_LENGTH_MS)
+      && (album.RunTimeTicks ?? album.CumulativeRunTimeTicks ?? 0)
+      <= msToTicks(EP_MAX_LENGTH_MS)
   )
 );
 
 const albums = computed(() =>
   discography.value.filter(
-    (album) =>
-      (album?.RunTimeTicks ?? album?.CumulativeRunTimeTicks ?? 0) >
-      msToTicks(EP_MAX_LENGTH_MS)
+    album =>
+      (album.RunTimeTicks ?? album.CumulativeRunTimeTicks ?? 0)
+      > msToTicks(EP_MAX_LENGTH_MS)
   )
 );
 

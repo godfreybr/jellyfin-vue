@@ -27,9 +27,4 @@ defineProps<{ item: BaseItemDto | BaseItemPerson }>();
   width: 100%;
   height: 100%;
 }
-
-.placeholder {
-  z-index: -1;
-}
 </style>
-

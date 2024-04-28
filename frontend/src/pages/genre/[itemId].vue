@@ -8,10 +8,8 @@
         {{ genre.Name }}
       </span>
       <VSpacer />
-      <VFadeTransition>
-        <PlayButton
-          :item="genre" />
-      </VFadeTransition>
+      <PlayButton
+        :item="genre" />
       <VBtn
         class="play-button mr-2"
         min-width="8em"
@@ -55,12 +53,12 @@ import {
 import { getItemsApi } from '@jellyfin/sdk/lib/utils/api/items-api';
 import { getUserLibraryApi } from '@jellyfin/sdk/lib/utils/api/user-library-api';
 import { computed } from 'vue';
-import { useRoute } from 'vue-router';
+import { useRoute } from 'vue-router/auto';
 import { isStr } from '@/utils/validation';
 import { useResponsiveClasses } from '@/composables/use-responsive-classes';
 import { useBaseItem } from '@/composables/apis';
 
-const route = useRoute<'/genre/[itemId]'>();
+const route = useRoute('/genre/[itemId]');
 
 const { itemId } = route.params;
 

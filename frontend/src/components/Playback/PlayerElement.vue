@@ -12,7 +12,7 @@
         crossorigin
         playsinline
         :loop="playbackManager.isRepeatingOnce"
-        :class="{ stretched: playerElement.isStretched }"
+        :class="{ stretched: playerElement.isStretched.value }"
         @loadeddata="onLoadedData">
         <track
           v-for="sub in playbackManager.currentItemVttParsedSubtitleTracks"
@@ -20,7 +20,7 @@
           kind="subtitles"
           :label="sub.label"
           :srclang="sub.srcLang"
-          :src="sub.src" />
+          :src="sub.src" >
       </Component>
     </Teleport>
   </template>
@@ -36,8 +36,8 @@ import {
   mediaElementRef,
   mediaWebAudio
 } from '@/store';
-import { playbackManager } from '@/store/playbackManager';
-import { playerElement } from '@/store/playerElement';
+import { playbackManager } from '@/store/playback-manager';
+import { playerElement } from '@/store/player-element';
 import { getImageInfo } from '@/utils/images';
 import { isNil } from '@/utils/validation';
 
@@ -88,17 +88,17 @@ const teleportTarget = computed<
 '.fullscreen-video-container' | '.minimized-video-container' | undefined
 >(() => {
   if (playbackManager.currentlyPlayingMediaType === 'Video') {
-    if (playerElement.isFullscreenMounted) {
+    if (playerElement.isFullscreenMounted.value) {
       return '.fullscreen-video-container';
-    } else if (playerElement.isPiPMounted) {
+    } else if (playerElement.isPiPMounted.value) {
       return '.minimized-video-container';
     }
   }
 });
 
 const posterUrl = computed(() =>
-  !isNil(playbackManager.currentItem) &&
-  playbackManager.currentlyPlayingMediaType === 'Video'
+  !isNil(playbackManager.currentItem)
+  && playbackManager.currentlyPlayingMediaType === 'Video'
     ? getImageInfo(playbackManager.currentItem, {
       preferBackdrop: true
     }).url
@@ -166,11 +166,12 @@ watch(
 );
 
 watch(mediaElementRef, async () => {
-  await nextTick();
   detachHls();
   await detachWebAudio();
 
   if (mediaElementRef.value) {
+    await nextTick();
+
     if (mediaElementType.value === 'video' && hls) {
       hls.attachMedia(mediaElementRef.value);
       hls.on(Events.ERROR, onHlsEror);
@@ -182,7 +183,10 @@ watch(mediaElementRef, async () => {
     );
     mediaWebAudio.sourceNode.connect(mediaWebAudio.context.destination);
   }
-});
+  /**
+   * Needed so WebAudio is properly disposed
+   */
+}, { flush: 'sync' });
 
 watch(
   () => playbackManager.currentSourceUrl,
@@ -192,10 +196,10 @@ watch(
     }
 
     if (
-      mediaElementRef.value &&
-      (!newUrl ||
-      playbackManager.currentMediaSource?.SupportsDirectPlay ||
-      !hls)
+      mediaElementRef.value
+      && (!newUrl
+      || playbackManager.currentMediaSource?.SupportsDirectPlay
+      || !hls)
     ) {
       /**
        * For the video case, Safari iOS doesn't support hls.js but supports native HLS.
@@ -205,9 +209,9 @@ watch(
        */
       mediaElementRef.value.src = String(newUrl);
     } else if (
-      hls &&
-      playbackManager.currentlyPlayingMediaType === 'Video' &&
-      newUrl
+      hls
+      && playbackManager.currentlyPlayingMediaType === 'Video'
+      && newUrl
     ) {
       /**
        * We need to check if HLS.js can handle transcoded audio to remove the video check

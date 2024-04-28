@@ -29,7 +29,7 @@ import IMdiPlaylistPlay from 'virtual:icons/mdi/playlist-play';
 import IMdiTelevisionClassic from 'virtual:icons/mdi/television-classic';
 import IMdiYoutube from 'virtual:icons/mdi/youtube';
 import IMdiYoutubeTV from 'virtual:icons/mdi/youtube-tv';
-import { effectScope, watch, type ComputedRef } from 'vue';
+import type { ComputedRef } from 'vue';
 import type { RouteNamedMap } from 'vue-router/auto-routes';
 import { ticksToMs } from './time';
 import { isNil } from '@/utils/validation';
@@ -82,8 +82,8 @@ export function isPerson(
   item: BaseItemDto | BaseItemPerson
 ): item is BaseItemPerson {
   return !!(
-    'Role' in item ||
-    (item.Type && validPersonTypes.includes(item.Type))
+    'Role' in item
+    || (item.Type && validPersonTypes.includes(item.Type))
   );
 }
 
@@ -247,16 +247,16 @@ export function canPlay(item: BaseItemDto | undefined): boolean {
       'Series',
       'Trailer',
       'Video'
-    ].includes(item.Type || '') ||
-    ['Video', 'Audio'].includes(item.MediaType || '') ||
-    item.IsFolder
+    ].includes(item.Type || '')
+    || ['Video', 'Audio'].includes(item.MediaType || '')
+    || item.IsFolder
   );
 }
 /**
  * Check if an item can be resumed
  */
 export function canResume(item: BaseItemDto): boolean {
-  return Boolean(item?.UserData?.PlaybackPositionTicks && item.UserData.PlaybackPositionTicks > 0);
+  return Boolean(item.UserData?.PlaybackPositionTicks && item.UserData.PlaybackPositionTicks > 0);
 }
 /**
  * Determine if an item can be mark as played
@@ -298,15 +298,15 @@ export function canRefreshMetadata(item: BaseItemDto): boolean {
     return false;
   }
 
-  const incompleteRecording =
-    item.Type === BaseItemKind.Recording && item.Status !== 'Completed';
-  const IsAdministrator =
-    remote.auth.currentUser?.Policy?.IsAdministrator ?? false;
+  const incompleteRecording
+    = item.Type === BaseItemKind.Recording && item.Status !== 'Completed';
+  const IsAdministrator
+    = remote.auth.currentUser?.Policy?.IsAdministrator ?? false;
 
   return (
-    IsAdministrator &&
-    !incompleteRecording &&
-    !invalidRefreshType.includes(item.Type ?? '')
+    IsAdministrator
+    && !incompleteRecording
+    && !invalidRefreshType.includes(item.Type ?? '')
   );
 }
 
@@ -449,7 +449,7 @@ export function getMediaStreams(
   mediaStreams: MediaStream[],
   streamType: string
 ): MediaStream[] {
-  return mediaStreams.filter((mediaStream) => mediaStream.Type === streamType);
+  return mediaStreams.filter(mediaStream => mediaStream.Type === streamType);
 }
 
 /**
@@ -498,8 +498,8 @@ export async function getItemSeasonDownloadMap(
 ): Promise<Map<string, string>> {
   const result = new Map<string, string>();
 
-  const episodes =
-    (
+  const episodes
+    = (
       await remote.sdk.newUserApi(getItemsApi).getItems({
         userId: remote.auth.currentUserId,
         parentId: seasonId,
@@ -530,8 +530,8 @@ export async function getItemSeriesDownloadMap(
 ): Promise<Map<string, string>> {
   let result = new Map<string, string>();
 
-  const seasons =
-    (
+  const seasons
+    = (
       await remote.sdk.newUserApi(getTvShowsApi).getSeasons({
         userId: remote.auth.currentUserId,
         seriesId: seriesId
@@ -576,25 +576,6 @@ export function formatBitRate(bitrate: number): string {
 }
 
 /**
- * Resolves when the websocket is ready and connected
- */
-export async function ensureWebSocket(): Promise<void> {
-  const scope = effectScope();
-
-  await new Promise<void>((resolve) => {
-    scope.run(() => {
-      watch(remote.socket.isConnected, () => {
-        if (remote.socket.isConnected.value) {
-          resolve();
-        }
-      }, { immediate: true, flush: 'sync' });
-    });
-  });
-  scope.stop();
-}
-
-
-/**
  * Gets all the items that need to be resolved to populate the interface
  */
 interface IndexPageQueries {
@@ -614,12 +595,6 @@ interface IndexPageQueries {
  */
 export async function fetchIndexPage(): Promise<IndexPageQueries> {
   const latestPerLibrary = new Map<BaseItemDto['Id'], ComputedRef<BaseItemDto[]>>();
-
-  /**
-   * Since this method can be called when loading the client, we need to make sure
-   * the socket is ready so useBaseItem are resolved successfully.
-   */
-  await ensureWebSocket();
 
   const { data: views } = await useBaseItem(getUserViewsApi, 'getUserViews')(() => ({}));
 

@@ -318,7 +318,7 @@ import { getLocalizationApi } from '@jellyfin/sdk/lib/utils/api/localization-api
 import { getUserApi } from '@jellyfin/sdk/lib/utils/api/user-api';
 import { computed, ref } from 'vue';
 import { useI18n } from 'vue-i18n';
-import { useRoute, useRouter } from 'vue-router';
+import { useRoute, useRouter } from 'vue-router/auto';
 import { remote } from '@/plugins/remote';
 import { useSnackbar } from '@/composables/use-snackbar';
 import { useConfirmDialog } from '@/composables/use-confirm-dialog';
@@ -336,7 +336,7 @@ interface CurrentUser {
 }
 
 const { t } = useI18n();
-const route = useRoute<'/settings/users/[id]'>();
+const route = useRoute('/settings/users/[id]');
 const router = useRouter();
 
 const loading = ref<boolean>(false);
@@ -344,7 +344,7 @@ const addTagDialogOpen = ref<boolean>(false);
 const newTagValue = ref<string>('');
 const user = ref<UserDto>({});
 const libraries = ref<BaseItemDtoQueryResult>();
-const parentalCategories = ref<{ label: string, id: number | undefined }[]>([]);
+const parentalCategories = ref<{ label: string; id: number | undefined }[]>([]);
 const model = ref<CurrentUser>({
   Name: '',
   CurrentPassword: '',
@@ -357,9 +357,37 @@ const model = ref<CurrentUser>({
   BlockedTags: []
 });
 const tab = ref<number>(1);
-const blockingCategories = computed(() => {
-  return [{label: t('books'), value: 'Book'}, {label: t('channels'), value: 'ChannelContent'}, {label: t('liveTv'), value: 'LiveTvChannel'}, {label: t('movies'), value: 'Movie'}, {label: t('music'), value: 'Music'}, {label: t('trailer'), value: 'Trailer'}, {label: t('shows'), value: 'Series'}];
-});
+const blockingCategories = computed(() =>
+  [
+    {
+      label: t('books'),
+      value: 'Book'
+    },
+    {
+      label: t('channels'),
+      value: 'ChannelContent'
+    },
+    {
+      label: t('liveTv'),
+      value: 'LiveTvChannel'
+    },
+    {
+      label: t('movies'),
+      value: 'Movie'
+    },
+    {
+      label: t('music'),
+      value: 'Music'
+    },
+    {
+      label: t('trailer'),
+      value: 'Trailer'
+    },
+    {
+      label: t('shows'),
+      value: 'Series'
+    }]
+);
 
 /**
  * Loads all data required for this page
@@ -371,21 +399,21 @@ async function load(): Promise<void> {
     userId: id
   })).data;
   initializeUser();
-  libraries.value = (await remote.sdk.newUserApi(getLibraryApi).getMediaFolders({isHidden: false})).data;
+  libraries.value = (await remote.sdk.newUserApi(getLibraryApi).getMediaFolders({ isHidden: false })).data;
 
   const cats = (await remote.sdk.newUserApi(getLocalizationApi).getParentalRatings()).data;
 
   for (const cat of cats) {
-    if (parentalCategories.value.some((c) => c.id === cat.Value!)) {
+    if (parentalCategories.value.some(c => c.id === cat.Value!)) {
       parentalCategories.value = parentalCategories.value.map((c) => {
         if (c.id === cat.Value!) {
-          return {label: `${c.label}/${cat.Name!}`, id: cat.Value};
+          return { label: `${c.label}/${cat.Name!}`, id: cat.Value };
         }
 
         return c;
       });
     } else {
-      parentalCategories.value.push({label: cat.Name!, id: cat.Value!});
+      parentalCategories.value.push({ label: cat.Name!, id: cat.Value! });
     }
   }
 }
@@ -403,7 +431,7 @@ async function saveAccess(): Promise<void> {
   loading.value = true;
   await remote.sdk.newUserApi(getUserApi).updateUserPolicy({
     userId: user.value.Id,
-    userPolicy: {...user.value.Policy, EnableAllFolders: model.value.CanAccessAllLibraries, EnabledFolders: model.value.Folders}
+    userPolicy: { ...user.value.Policy, EnableAllFolders: model.value.CanAccessAllLibraries, EnabledFolders: model.value.Folders }
   });
   await refreshData();
   loading.value = false;
@@ -420,7 +448,7 @@ async function saveProfile(): Promise<void> {
   loading.value = true;
   await remote.sdk.newUserApi(getUserApi).updateUser({
     userId: user.value.Id,
-    userDto: {...user.value, Name: model.value.Name}
+    userDto: { ...user.value, Name: model.value.Name }
   });
   await refreshData();
   loading.value = false;
@@ -461,8 +489,8 @@ async function submitPassword(): Promise<void> {
   }
 
   loading.value = true;
-  await remote.sdk.newUserApi(getUserApi).updateUserPassword({userId: user.value.Id, updateUserPassword: {NewPw: model.value.Password, ...(user.value.HasPassword && {CurrentPw: model.value.ConfirmPassword})}});
-  model.value = {...model.value, CurrentPassword: '',Password: '', ConfirmPassword: ''};
+  await remote.sdk.newUserApi(getUserApi).updateUserPassword({ userId: user.value.Id, updateUserPassword: { NewPw: model.value.Password, ...(user.value.HasPassword && { CurrentPw: model.value.ConfirmPassword }) } });
+  model.value = { ...model.value, CurrentPassword: '', Password: '', ConfirmPassword: '' };
   await refreshData();
   loading.value = false;
 }
@@ -484,9 +512,9 @@ async function refreshData(): Promise<void> {
 /**
  * Deletes the user
  */
-async function deleteUser():Promise<void> {
+async function deleteUser(): Promise<void> {
   await useConfirmDialog(async () => {
-    await remote.sdk.newUserApi(getUserApi).deleteUser({userId: user.value.Id!});
+    await remote.sdk.newUserApi(getUserApi).deleteUser({ userId: user.value.Id! });
     await router.push('/settings/users');
   }, {
     title: t('deleteUser'),
@@ -504,9 +532,9 @@ async function resetPassword(): Promise<void> {
   }
 
   loading.value = true;
-  await remote.sdk.newUserApi(getUserApi).updateUserPassword({userId: user.value.Id, updateUserPassword: {
+  await remote.sdk.newUserApi(getUserApi).updateUserPassword({ userId: user.value.Id, updateUserPassword: {
     ResetPassword: true
-  }});
+  } });
   await refreshData();
   loading.value = false;
 }

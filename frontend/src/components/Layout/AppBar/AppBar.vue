@@ -19,15 +19,15 @@
     <SearchField />
     <VSpacer />
     <AppBarButtonLayout
-      v-if="!network.isOnline"
-      color="red">
+      v-if="!remote.socket.isConnected.value || !isConnectedToServer"
+      :color="!remote.socket.isConnected.value ? 'yellow' : 'red'">
       <template #icon>
         <VIcon>
           <IMdiNetworkOffOutline />
         </VIcon>
       </template>
       <template #tooltip>
-        <span>{{ $t('noNetworkConnection') }}</span>
+        <span>{{ !remote.socket.isConnected.value ? $t('noWebSocketConnection') : $t('noServerConnection') }}</span>
       </template>
     </AppBarButtonLayout>
     <TaskManagerButton />
@@ -60,15 +60,14 @@
 
 <script setup lang="ts">
 import { computed, inject, type Ref } from 'vue';
-import { useRoute } from 'vue-router';
-import { network, windowScroll } from '@/store';
-import { clientSettings } from '@/store/clientSettings';
+import { useRoute } from 'vue-router/auto';
+import { windowScroll, isConnectedToServer } from '@/store';
+import { clientSettings } from '@/store/client-settings';
+import { remote } from '@/plugins/remote';
 
 const route = useRoute();
 const { y } = windowScroll;
-const transparentAppBar = computed<boolean>(() => {
-  return (route.meta.transparentLayout || false) && y.value < 10;
-});
+const transparentAppBar = computed(() => Boolean(route.meta.transparentLayout) && y.value < 10);
 
 /**
  * Cycle between the different color schemas

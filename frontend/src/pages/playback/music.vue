@@ -19,7 +19,7 @@
       </AppBarButtonLayout>
     </VAppBar>
     <VCol class="px-0">
-      <VFadeTransition mode="out-in">
+      <JTransition mode="out-in">
         <Swiper
           v-if="!isVisualizing"
           class="d-flex justify-center align-center user-select-none"
@@ -29,7 +29,6 @@
           :autoplay="false"
           effect="coverflow"
           :coverflow-effect="coverflowEffect"
-          keyboard
           a11y
           virtual
           @swiper="(swiper) => swiperInstance = swiper"
@@ -47,7 +46,7 @@
         <MusicVisualizer
           v-else
           class="d-flex justify-center align-center user-select-none presentation-height" />
-      </VFadeTransition>
+      </JTransition>
       <VRow class="justify-center align-center mt-3">
         <VCol cols="6">
           <VRow class="justify-center align-center">
@@ -105,20 +104,23 @@ import 'swiper/css/a11y';
 import 'swiper/css/effect-coverflow';
 import 'swiper/css/keyboard';
 import 'swiper/css/virtual';
-import { A11y, EffectCoverflow, Keyboard, Virtual } from 'swiper/modules';
+import { A11y, EffectCoverflow, Virtual } from 'swiper/modules';
 import { Swiper, SwiperSlide } from 'swiper/vue';
 import { computed, ref, shallowRef, watchEffect } from 'vue';
-import { useRoute } from 'vue-router';
+import { useRoute } from 'vue-router/auto';
 import { playbackGuard } from '@/plugins/router/middlewares/playback';
-import { playbackManager } from '@/store/playbackManager';
+import { playbackManager } from '@/store/playback-manager';
 import { isNil } from '@/utils/validation';
 import { getBlurhash } from '@/utils/images';
+import { usePlayback } from '@/composables/use-playback';
 
 defineOptions({
   beforeRouteEnter: playbackGuard
 });
 
-const modules = [A11y, Keyboard, Virtual, EffectCoverflow];
+usePlayback();
+
+const modules = [A11y, Virtual, EffectCoverflow];
 const route = useRoute();
 
 const coverflowEffect = {

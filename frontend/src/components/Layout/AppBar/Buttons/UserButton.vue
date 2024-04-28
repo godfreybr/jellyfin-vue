@@ -11,12 +11,10 @@
           density="compact">
           <VListItem>
             <template #prepend>
-              <VAvatar>
-                <UserImage
-                  :user="auth.currentUser"
-                  :size="40"
-                  rounded />
-              </VAvatar>
+              <UserImage
+                :user="auth.currentUser"
+                :size="40"
+                rounded />
             </template>
             <template #title>
               <VListItemTitle class="text-body-1">
@@ -53,7 +51,7 @@ import IMdiLogout from 'virtual:icons/mdi/logout';
 import IMdiPencil from 'virtual:icons/mdi/pencil';
 import { computed } from 'vue';
 import { useI18n } from 'vue-i18n';
-import { useRouter } from 'vue-router';
+import { useRouter } from 'vue-router/auto';
 import { remote } from '@/plugins/remote';
 
 interface MenuItem {

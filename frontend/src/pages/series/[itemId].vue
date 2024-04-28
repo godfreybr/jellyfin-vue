@@ -142,13 +142,11 @@
               class="text-subtitle-1 text-truncate">
               {{ item.Taglines[0] }}
             </p>
-            <!-- eslint-disable vue/no-v-html -
-              Output is properly sanitized using sanitizeHtml -->
             <p
               v-if="item.Overview"
-              class="item-overview"
-              v-html="sanitizeHtml(item.Overview, true)" />
-            <!-- eslint-enable vue/no-v-html -->
+              class="item-overview">
+              <JSafeHtml :html="item.Overview" markdown />
+            </p>
           </div>
         </VCol>
       </VRow>
@@ -188,13 +186,12 @@ import {
 import { getLibraryApi } from '@jellyfin/sdk/lib/utils/api/library-api';
 import { getUserLibraryApi } from '@jellyfin/sdk/lib/utils/api/user-library-api';
 import { computed } from 'vue';
-import { useRoute } from 'vue-router';
+import { useRoute } from 'vue-router/auto';
 import { getItemDetailsLink } from '@/utils/items';
 import { getBlurhash } from '@/utils/images';
-import { sanitizeHtml } from '@/utils/html';
 import { useBaseItem } from '@/composables/apis';
 
-const route = useRoute<'/series/[itemId]'>();
+const route = useRoute('/series/[itemId]');
 
 const { data: item } = await useBaseItem(getUserLibraryApi, 'getItem')(() => ({
   itemId: route.params.itemId
@@ -205,23 +202,23 @@ const { data: relatedItems } = await useBaseItem(getLibraryApi, 'getSimilarItems
 }));
 
 const crew = computed<BaseItemPerson[]>(() =>
-  (item.value.People ?? []).filter((person) =>
-    ['Director', 'Writer'].includes(person?.Type ?? '')
+  (item.value.People ?? []).filter(person =>
+    ['Director', 'Writer'].includes(person.Type ?? '')
   )
 );
 
 const actors = computed<BaseItemPerson[]>(() =>
   (item.value.People ?? [])
-    .filter((person) => person.Type === 'Actor')
+    .filter(person => person.Type === 'Actor')
     .slice(0, 10)
 );
 
 const directors = computed(() =>
-  crew.value.filter((person) => person.Type === 'Director')
+  crew.value.filter(person => person.Type === 'Director')
 );
 
 const writers = computed(() =>
-  crew.value.filter((person) => person.Type === 'Writer')
+  crew.value.filter(person => person.Type === 'Writer')
 );
 
 route.meta.title = item.value.Name;
