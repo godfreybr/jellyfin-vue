@@ -87,7 +87,7 @@ class TaskManagerStore extends CommonStore<TaskManagerState> {
     if (task) {
       if (this._state.finishedTasksTimeout > 0) {
         task.progress = 100;
-        window.setTimeout(clearTask, this._state.finishedTasksTimeout);
+        globalThis.setTimeout(clearTask, this._state.finishedTasksTimeout);
       } else {
         clearTask();
       }
@@ -106,10 +106,10 @@ class TaskManagerStore extends CommonStore<TaskManagerState> {
   };
 
   public constructor() {
-    super('taskManager', {
+    super('taskManager', () => ({
       tasks: [],
       finishedTasksTimeout: 5000
-    }, 'sessionStorage');
+    }), 'sessionStorage');
 
     /**
      * Handle refresh progress update for library items
@@ -117,9 +117,9 @@ class TaskManagerStore extends CommonStore<TaskManagerState> {
     const refreshProgressAction = (type: string, data: object): void => {
       if (
         type === 'RefreshProgress'
-          && 'ItemId' in data
-          && isStr(data.ItemId)
-          && 'Progress' in data
+        && 'ItemId' in data
+        && isStr(data.ItemId)
+        && 'Progress' in data
       ) {
         // TODO: Verify all the different tasks that this message may belong to - here we assume libraries.
 
@@ -154,8 +154,8 @@ class TaskManagerStore extends CommonStore<TaskManagerState> {
     const libraryChangedAction = (type: string, data: object): void => {
       if (
         type === 'LibraryChanged'
-          && 'ItemsUpdated' in data
-          && isArray(data.ItemsUpdated)
+        && 'ItemsUpdated' in data
+        && isArray(data.ItemsUpdated)
       ) {
         for (const id of data.ItemsUpdated) {
           if (isStr(id)) {

@@ -7,6 +7,7 @@
 import {
   BaseItemKind,
   ItemFilter,
+  ItemSortBy,
   MediaStreamType,
   SubtitleDeliveryMethod,
   type BaseItemDto,
@@ -20,7 +21,6 @@ import { getMediaInfoApi } from '@jellyfin/sdk/lib/utils/api/media-info-api';
 import { getPlaystateApi } from '@jellyfin/sdk/lib/utils/api/playstate-api';
 import { getTvShowsApi } from '@jellyfin/sdk/lib/utils/api/tv-shows-api';
 import { useEventListener, watchThrottled } from '@vueuse/core';
-import { shuffle } from 'lodash-es';
 import { v4 } from 'uuid';
 import { watch, watchEffect } from 'vue';
 import { isNil, sealed } from '@/utils/validation';
@@ -35,6 +35,7 @@ import playbackProfile from '@/utils/playback-profiles';
 import { msToTicks } from '@/utils/time';
 import { mediaControls, mediaElementRef } from '@/store';
 import { CommonStore } from '@/store/super/common-store';
+import { shuffle } from '@/utils/data-manipulation';
 
 /**
  * == INTERFACES AND TYPES ==
@@ -172,7 +173,7 @@ class PlaybackManagerStore extends CommonStore<PlaybackManagerState> {
    * Get reactive BaseItemDto's objects of the queue
    */
   public get queue(): BaseItemDto[] {
-    return apiStore.getItemsById(this._state.queue) as BaseItemDto[] ?? [];
+    return apiStore.getItemsById(this._state.queue) as BaseItemDto[];
   }
 
   /**
@@ -279,7 +280,7 @@ class PlaybackManagerStore extends CommonStore<PlaybackManagerState> {
           sub =>
             sub.Type === MediaStreamType.Subtitle
             && (sub.DeliveryMethod === SubtitleDeliveryMethod.Encode
-            || sub.DeliveryMethod === SubtitleDeliveryMethod.External)
+              || sub.DeliveryMethod === SubtitleDeliveryMethod.External)
         )
         .map(sub => ({
           label: sub.DisplayTitle ?? 'Undefined',
@@ -290,35 +291,50 @@ class PlaybackManagerStore extends CommonStore<PlaybackManagerState> {
           srcLang: sub.Language ?? undefined,
           type: sub.DeliveryMethod ?? SubtitleDeliveryMethod.Drop,
           srcIndex: sub.srcIndex,
-          codec: sub.Codec === null ? undefined : sub.Codec
+          codec: sub.Codec === null ? undefined : sub.Codec?.toLowerCase()
         }));
     }
   }
 
   /**
-   * Filters the native subtitles
-   *
-   * As our profile requires either SSA or VTT, if it's not SSA it'll be VTT.
-   * This is done this way as server sends as "Codec" the initial value of the track, so it can be webvtt, subrip, srt...
-   * This is easier to filter out the SSA subs
+   * Filters the external subtitle tracks
    */
-  public get currentItemVttParsedSubtitleTracks(): PlaybackExternalTrack[] {
+  public get currentItemExternalParsedSubtitleTracks(): PlaybackExternalTrack[] {
     return (
       this.currentItemParsedSubtitleTracks?.filter(
         (sub): sub is PlaybackExternalTrack =>
-          !!sub.codec && sub.codec !== 'ass' && sub.codec !== 'ssa' && !!sub.src
+          sub.codec !== undefined
+          && sub.src !== undefined
       ) ?? []
+    );
+  }
+
+  public get currentItemVttParsedSubtitleTracks(): PlaybackExternalTrack[] {
+    return (
+      this.currentItemExternalParsedSubtitleTracks.filter(
+        sub =>
+          sub.codec === 'vtt'
+          || sub.codec === 'srt'
+          || sub.codec === 'subrip'
+      )
     );
   }
 
   public get currentItemAssParsedSubtitleTracks(): PlaybackExternalTrack[] {
     return (
-      this.currentItemParsedSubtitleTracks?.filter(
-        (sub): sub is PlaybackExternalTrack =>
-          !!sub.codec
-          && (sub.codec === 'ass' || sub.codec === 'ssa')
-          && !!sub.src
-      ) ?? []
+      this.currentItemExternalParsedSubtitleTracks.filter(
+        sub =>
+          sub.codec === 'ass'
+          || sub.codec === 'ssa'
+      )
+    );
+  }
+
+  public get currentItemPgsParsedSubtitleTracks(): PlaybackExternalTrack[] {
+    return (
+      this.currentItemExternalParsedSubtitleTracks.filter(
+        sub => sub.codec === 'pgssub'
+      )
     );
   }
 
@@ -405,7 +421,7 @@ class PlaybackManagerStore extends CommonStore<PlaybackManagerState> {
   }
 
   /**
-   * In milliseconds
+   * In seconds
    */
   public get currentTime(): number {
     return this.isRemotePlayer
@@ -461,8 +477,7 @@ class PlaybackManagerStore extends CommonStore<PlaybackManagerState> {
   }
 
   public set currentVolume(newVolume: number) {
-    newVolume = newVolume > 100 ? 100 : newVolume;
-    newVolume = newVolume < 0 ? 0 : newVolume;
+    newVolume = Math.min(newVolume, 100);
     this.isMuted = newVolume === 0;
 
     if (this._state.isRemotePlayer) {
@@ -599,7 +614,7 @@ class PlaybackManagerStore extends CommonStore<PlaybackManagerState> {
       this._state.currentItemIndex = startFromIndex;
 
       if (startShuffled) {
-        this.toggleShuffle(false);
+        void this.toggleShuffle(false);
       }
 
       this.currentTime = startFromTime;
@@ -754,8 +769,8 @@ class PlaybackManagerStore extends CommonStore<PlaybackManagerState> {
     this.currentVolume = this.currentVolume - 5;
   };
 
-  public readonly toggleShuffle = (preserveCurrentItem = true): void => {
-    if (this._state.queue && !isNil(this._state.currentItemIndex)) {
+  public readonly toggleShuffle = async (preserveCurrentItem = true): Promise<void> => {
+    if (!isNil(this._state.currentItemIndex)) {
       if (this._state.isShuffling) {
         const item = this._state.queue[this._state.currentItemIndex];
 
@@ -764,7 +779,7 @@ class PlaybackManagerStore extends CommonStore<PlaybackManagerState> {
         this._state.originalQueue = [];
         this._state.isShuffling = false;
       } else {
-        const queue = shuffle(this._state.queue);
+        const queue = await shuffle(this._state.queue);
 
         this._state.originalQueue = this._state.queue;
 
@@ -819,12 +834,8 @@ class PlaybackManagerStore extends CommonStore<PlaybackManagerState> {
 
   public readonly instantMixFromItem = async (itemId: string): Promise<void> => {
     const { data: items } = await useBaseItem(getInstantMixApi, 'getInstantMixFromItem', { skipCache: { request: true } })(() => ({
-      id: itemId
+      itemId
     }));
-
-    if (!items.value) {
-      throw new Error('No items found');
-    }
 
     for (const item of items.value) {
       await this.addToQueue(item);
@@ -868,7 +879,7 @@ class PlaybackManagerStore extends CommonStore<PlaybackManagerState> {
     const sortOrder
       = item.Type === BaseItemKind.Playlist || item.Type === BaseItemKind.BoxSet
         ? undefined
-        : ['SortName'];
+        : [ItemSortBy.SortName];
     const ids
       = item.Type === BaseItemKind.Program && item.ChannelId
         ? [item.ChannelId]
@@ -997,7 +1008,7 @@ class PlaybackManagerStore extends CommonStore<PlaybackManagerState> {
   };
 
   public constructor() {
-    super('playbackManager', {
+    super('playbackManager', () => ({
       status: PlaybackStatus.Stopped,
       currentSourceUrl: undefined,
       currentItemIndex: undefined,
@@ -1018,7 +1029,7 @@ class PlaybackManagerStore extends CommonStore<PlaybackManagerState> {
       playbackInitiator: undefined,
       playbackInitMode: InitMode.Unknown,
       playbackSpeed: 1
-    });
+    }));
     /**
      * Logic is divided by concerns and scope. Watchers for callbacks
      * that rely on the same variables might not be together. Categories:
@@ -1053,10 +1064,10 @@ class PlaybackManagerStore extends CommonStore<PlaybackManagerState> {
      * == MediaSession API: https://developer.mozilla.org/en-US/docs/Web/API/MediaSession ==
      */
     watchEffect(() => {
-      if (window.navigator.mediaSession) {
+      if (globalThis.navigator.mediaSession) {
         const { t } = i18n;
 
-        window.navigator.mediaSession.metadata = this.currentItem
+        globalThis.navigator.mediaSession.metadata = this.currentItem
           ? new MediaMetadata({
             title: this.currentItem.Name ?? t('unknownTitle'),
             artist: this.currentItem.AlbumArtist ?? t('unknownArtist'),
@@ -1074,19 +1085,19 @@ class PlaybackManagerStore extends CommonStore<PlaybackManagerState> {
       }
     });
     watchEffect(() => {
-      if (window.navigator.mediaSession) {
+      if (globalThis.navigator.mediaSession) {
         switch (this.status) {
           case PlaybackStatus.Playing: {
-            window.navigator.mediaSession.playbackState = 'playing';
+            globalThis.navigator.mediaSession.playbackState = 'playing';
             break;
           }
           case PlaybackStatus.Paused:
           case PlaybackStatus.Buffering: {
-            window.navigator.mediaSession.playbackState = 'paused';
+            globalThis.navigator.mediaSession.playbackState = 'paused';
             break;
           }
           default: {
-            window.navigator.mediaSession.playbackState = 'none';
+            globalThis.navigator.mediaSession.playbackState = 'none';
           }
         }
       }
@@ -1101,10 +1112,8 @@ class PlaybackManagerStore extends CommonStore<PlaybackManagerState> {
           = oldValue === PlaybackStatus.Error
           || oldValue === PlaybackStatus.Stopped;
 
-        if (window.navigator.mediaSession && (remove || add)) {
-          const actionHandlers: {
-            [key in MediaSessionAction]?: MediaSessionActionHandler;
-          } = {
+        if (globalThis.navigator.mediaSession && (remove || add)) {
+          const actionHandlers: Partial<Record<MediaSessionAction, MediaSessionActionHandler>> = {
             play: this.unpause,
             pause: this.pause,
             previoustrack: () => { this.setPreviousItem(); },
@@ -1117,12 +1126,12 @@ class PlaybackManagerStore extends CommonStore<PlaybackManagerState> {
             }
           };
 
-          for (const [action, handler] of Object.entries(actionHandlers)) {
+          for (const action in actionHandlers) {
             try {
-              window.navigator.mediaSession.setActionHandler(
+              globalThis.navigator.mediaSession.setActionHandler(
                 action as MediaSessionAction,
                 /* eslint-disable-next-line unicorn/no-null */
-                add ? handler : null
+                add ? actionHandlers[action as keyof typeof actionHandlers] ?? null : null
               );
             } catch {
               console.error(
@@ -1141,12 +1150,12 @@ class PlaybackManagerStore extends CommonStore<PlaybackManagerState> {
         || this.status === PlaybackStatus.Stopped;
 
       if (
-        window.navigator.mediaSession
+        globalThis.navigator.mediaSession
         && this.currentTime <= this.currentItemRuntime
       ) {
         const duration = this.currentItemRuntime / 1000;
 
-        window.navigator.mediaSession.setPositionState(
+        globalThis.navigator.mediaSession.setPositionState(
           remove
             ? undefined
             : {
@@ -1205,9 +1214,9 @@ class PlaybackManagerStore extends CommonStore<PlaybackManagerState> {
           oldVal.currentSubtitleStreamIndex
           !== newVal.currentSubtitleStreamIndex
           && (oldVal.currentSubtitleTrack?.DeliveryMethod
-          === SubtitleDeliveryMethod.Encode
-          || newVal.currentSubtitleTrack?.DeliveryMethod
-          === SubtitleDeliveryMethod.Encode)
+            === SubtitleDeliveryMethod.Encode
+            || newVal.currentSubtitleTrack?.DeliveryMethod
+            === SubtitleDeliveryMethod.Encode)
         ) {
           /**
            * We need to set a new media source when:

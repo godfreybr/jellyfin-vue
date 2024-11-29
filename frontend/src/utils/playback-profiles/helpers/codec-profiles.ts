@@ -33,16 +33,16 @@ function getGlobalMaxVideoBitrate(): number | undefined {
 
   if (
     isTizen()
-    && 'webapis' in window
-    && isObj(window.webapis)
-    && window.webapis
-    && 'productinfo' in window.webapis
-    && isObj(window.webapis.productinfo)
-    && window.webapis.productinfo
-    && 'isUdPanelSupported' in window.webapis.productinfo
-    && isFunc(window.webapis.productinfo.isUdPanelSupported)
+    && 'webapis' in globalThis
+    && isObj(globalThis.webapis)
+    && globalThis.webapis
+    && 'productinfo' in globalThis.webapis
+    && isObj(globalThis.webapis.productinfo)
+    && globalThis.webapis.productinfo
+    && 'isUdPanelSupported' in globalThis.webapis.productinfo
+    && isFunc(globalThis.webapis.productinfo.isUdPanelSupported)
   ) {
-    isTizenFhd = !window.webapis.productinfo.isUdPanelSupported();
+    isTizenFhd = !globalThis.webapis.productinfo.isUdPanelSupported();
   }
 
   /*
@@ -142,7 +142,7 @@ export function getCodecProfiles(
 
   const supportsSecondaryAudio = isTizen();
 
-  if (aacProfileConditions.length > 0) {
+  if (aacProfileConditions.length) {
     CodecProfiles.push({
       Type: CodecType.VideoAudio,
       Codec: 'aac',
@@ -185,10 +185,10 @@ export function getCodecProfiles(
 
   if (
     (isTizen()
-    || videoTestElement
-      .canPlayType('video/mp4; codecs="avc1.6e0033"')
-      .replace(/no/, '')) // TODO: These tests are passing in Safari, but playback is failing
-      && (!isApple() || !isWebOS() || !(isEdge() && !isChromiumBased()))
+      || videoTestElement
+        .canPlayType('video/mp4; codecs="avc1.6e0033"')
+        .replace(/no/, '')) // TODO: These tests are passing in Safari, but playback is failing
+        && (!isApple() || !isWebOS() || !(isEdge() && !isChromiumBased()))
   ) {
     h264Profiles += '|high 10';
   }

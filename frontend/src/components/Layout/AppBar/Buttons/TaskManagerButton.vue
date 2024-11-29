@@ -57,8 +57,6 @@ interface TaskInfo {
   id: string;
 }
 
-defineProps<{ fab?: boolean }>();
-
 const menu = ref(false);
 const completedTaskList = ref<TaskInfo[]>([]);
 const { t } = useI18n();
@@ -101,7 +99,7 @@ const UITaskList = computed(() => [
     : mappedTaskList.value),
   ...completedTaskList.value
 ]);
-const showButton = computed(() => UITaskList.value.length > 0);
+const showButton = computed(() => UITaskList.value.length);
 
 watch([menu, mappedCompleted], () => {
   if (menu.value) {

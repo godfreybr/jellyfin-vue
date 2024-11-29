@@ -13,7 +13,7 @@
         <div>
           <ServerCard
             v-for="server in $remote.auth.servers"
-            :key="server.Id || v4()"
+            :key="server.Id || useId()"
             class="mt-2"
             :server-info="server" />
         </div>
@@ -38,12 +38,11 @@ meta:
 </route>
 
 <script setup lang="ts">
-import { v4 } from 'uuid';
+import { useId } from 'vue';
 import { useI18n } from 'vue-i18n';
-import { useRoute } from 'vue-router/auto';
+import { usePageTitle } from '@/composables/page-title';
 
 const { t } = useI18n();
-const route = useRoute();
 
-route.meta.title = t('selectServer');
+usePageTitle(() => t('selectServer'));
 </script>

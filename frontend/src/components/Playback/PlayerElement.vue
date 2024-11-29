@@ -2,26 +2,35 @@
   <template v-if="mediaElementType">
     <Teleport
       :to="videoContainerRef"
-      :disabled="!videoContainerRef">
-      <Component
-        :is="mediaElementType"
-        v-show="mediaElementType === 'video' && videoContainerRef"
-        ref="mediaElementRef"
-        :poster="String(posterUrl)"
-        autoplay
-        crossorigin
-        playsinline
-        :loop="playbackManager.isRepeatingOnce"
-        :class="{ stretched: playerElement.isStretched.value }"
-        @loadeddata="onLoadedData">
-        <track
-          v-for="sub in playbackManager.currentItemVttParsedSubtitleTracks"
-          :key="`${playbackManager.currentSourceUrl}-${sub.srcIndex}`"
-          kind="subtitles"
-          :label="sub.label"
-          :srclang="sub.srcLang"
-          :src="sub.src" >
-      </Component>
+      :disabled="!videoContainerRef"
+      defer>
+      <div class="uno-relative">
+        <Component
+          :is="mediaElementType"
+          v-show="mediaElementType === 'video' && videoContainerRef"
+          ref="mediaElementRef"
+          :poster="String(posterUrl)"
+          autoplay
+          crossorigin
+          playsinline
+          :loop="playbackManager.isRepeatingOnce"
+          class="uno-h-full uno-max-h-100vh"
+          :class="{
+            'uno-object-fill': playerElement.isStretched.value,
+            'uno-w-screen': playerElement.isStretched.value
+          }"
+          @loadeddata="onLoadedData">
+          <track
+            v-for="sub in playbackManager.currentItemVttParsedSubtitleTracks"
+            :key="`${playbackManager.currentSourceUrl}-${sub.srcIndex}`"
+            kind="subtitles"
+            :label="sub.label"
+            :srclang="sub.srcLang"
+            :src="sub.src">
+        </Component>
+        <SubtitleTrack
+          v-if="subtitleSettings.state.enabled && playerElement.currentExternalSubtitleTrack?.parsed !== undefined" />
+      </div>
     </Teleport>
   </template>
 </template>
@@ -40,37 +49,16 @@ import { playbackManager } from '@/store/playback-manager';
 import { playerElement, videoContainerRef } from '@/store/player-element';
 import { getImageInfo } from '@/utils/images';
 import { isNil } from '@/utils/validation';
+import { subtitleSettings } from '@/store/client-settings/subtitle-settings';
 
 const { t } = useI18n();
-
+let busyWebAudio = false;
 const hls = Hls.isSupported()
   ? new Hls({
     testBandwidth: false,
     workerPath: HlsWorkerUrl
   })
   : undefined;
-
-/**
- * Detaches HLS instance after playback is done
- */
-function detachHls(): void {
-  if (hls) {
-    hls.detachMedia();
-    hls.off(Events.ERROR, onHlsEror);
-  }
-}
-
-/**
- * Suspends WebAudio when no playback is in place
- */
-async function detachWebAudio(): Promise<void> {
-  if (mediaWebAudio.sourceNode) {
-    mediaWebAudio.sourceNode.disconnect();
-    mediaWebAudio.sourceNode = undefined;
-  }
-
-  await mediaWebAudio.context.suspend();
-}
 
 const mediaElementType = computed<'audio' | 'video' | undefined>(() => {
   if (playbackManager.isAudio) {
@@ -88,6 +76,71 @@ const posterUrl = computed(() =>
     }).url
     : undefined
 );
+
+/**
+ * Detaches HLS instance after playback is done
+ */
+function detachHls(): void {
+  if (hls) {
+    hls.detachMedia();
+    hls.off(Events.ERROR, onHlsEror);
+  }
+}
+
+/**
+ * Suspends WebAudio when no playback is in place
+ */
+async function detachWebAudio(): Promise<void> {
+  if (mediaWebAudio.context.state === 'running' && !busyWebAudio) {
+    busyWebAudio = true;
+
+    try {
+      if (mediaWebAudio.gainNode) {
+        mediaWebAudio.gainNode.gain.setValueAtTime(mediaWebAudio.gainNode.gain.value, mediaWebAudio.context.currentTime);
+        mediaWebAudio.gainNode.gain.exponentialRampToValueAtTime(0.0001, mediaWebAudio.context.currentTime + 1.5);
+        await nextTick();
+        await new Promise(resolve => globalThis.setTimeout(resolve));
+        mediaWebAudio.gainNode.disconnect();
+        mediaWebAudio.gainNode = undefined;
+      }
+
+      if (mediaWebAudio.sourceNode) {
+        mediaWebAudio.sourceNode.disconnect();
+        mediaWebAudio.sourceNode = undefined;
+      }
+
+      await mediaWebAudio.context.suspend();
+    } catch {} finally {
+      busyWebAudio = false;
+    }
+  }
+}
+
+/**
+ * Resumes WebAudio when playback is in place
+ */
+async function attachWebAudio(el: HTMLMediaElement): Promise<void> {
+  if (mediaWebAudio.context.state === 'suspended' && !busyWebAudio) {
+    busyWebAudio = true;
+
+    try {
+      await mediaWebAudio.context.resume();
+
+      mediaWebAudio.sourceNode = mediaWebAudio.context.createMediaElementSource(el);
+      mediaWebAudio.sourceNode.connect(mediaWebAudio.context.destination);
+
+      /**
+       * The gain node is to avoid cracks when stopping playback or switching really fast between tracks
+       */
+      mediaWebAudio.gainNode = mediaWebAudio.context.createGain();
+      mediaWebAudio.gainNode.connect(mediaWebAudio.context.destination);
+      mediaWebAudio.gainNode.gain.setValueAtTime(mediaWebAudio.gainNode.gain.value, mediaWebAudio.context.currentTime);
+      mediaWebAudio.gainNode.gain.exponentialRampToValueAtTime(1, mediaWebAudio.context.currentTime + 1.5);
+    } catch {} finally {
+      busyWebAudio = false;
+    }
+  }
+}
 
 /**
  * Called by the media element when the playback is ready
@@ -141,23 +194,14 @@ watch(mediaElementRef, async () => {
   await detachWebAudio();
 
   if (mediaElementRef.value) {
-    await nextTick();
-
     if (mediaElementType.value === 'video' && hls) {
       hls.attachMedia(mediaElementRef.value);
       hls.on(Events.ERROR, onHlsEror);
     }
 
-    await mediaWebAudio.context.resume();
-    mediaWebAudio.sourceNode = mediaWebAudio.context.createMediaElementSource(
-      mediaElementRef.value
-    );
-    mediaWebAudio.sourceNode.connect(mediaWebAudio.context.destination);
+    await attachWebAudio(mediaElementRef.value);
   }
-  /**
-   * Needed so WebAudio is properly disposed
-   */
-}, { flush: 'sync' });
+});
 
 watch(
   () => playbackManager.currentSourceUrl,
@@ -169,8 +213,8 @@ watch(
     if (
       mediaElementRef.value
       && (!newUrl
-      || playbackManager.currentMediaSource?.SupportsDirectPlay
-      || !hls)
+        || playbackManager.currentMediaSource?.SupportsDirectPlay
+        || !hls)
     ) {
       /**
        * For the video case, Safari iOS doesn't support hls.js but supports native HLS.
@@ -192,9 +236,3 @@ watch(
   }
 );
 </script>
-
-<style scoped>
-.stretched {
-  object-fit: fill;
-}
-</style>

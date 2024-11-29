@@ -4,7 +4,7 @@
     fluid>
     <VRow justify="center">
       <VCol
-        v-if="!currentUser && !loginAsOther && publicUsers.length > 0"
+        v-if="!currentUser && !loginAsOther && publicUsers.length"
         sm="10"
         md="7"
         lg="5">
@@ -79,8 +79,11 @@
         </h5>
         <LoginForm
           :user="currentUser"
+          :disabled="!isConnectedToServer"
           @change="resetCurrentUser" />
-        <p v-if="disclaimer" class="text-p mt-6 text-center">
+        <p
+          v-if="disclaimer"
+          class="mt-6 text-center text-p">
           <JSafeHtml :html="disclaimer" />
         </p>
       </VCol>
@@ -96,26 +99,17 @@ meta:
 
 <script setup lang="ts">
 import type { UserDto } from '@jellyfin/sdk/lib/generated-client';
-import { ref, shallowRef, computed } from 'vue';
+import { ref, shallowRef, computed, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
-import { useRoute, useRouter } from 'vue-router/auto';
-import { watchImmediate } from '@vueuse/core';
 import { remote } from '@/plugins/remote';
-import { getJSONConfig } from '@/utils/external-config';
+import { jsonConfig } from '@/utils/external-config';
+import { usePageTitle } from '@/composables/page-title';
+import { useSnackbar } from '@/composables/use-snackbar';
 import { isConnectedToServer } from '@/store';
 
-const jsonConfig = await getJSONConfig();
 const { t } = useI18n();
-const route = useRoute();
-const router = useRouter();
 
-route.meta.title = t('login');
-
-watchImmediate(isConnectedToServer, async () => {
-  if (!isConnectedToServer.value) {
-    await router.replace('/server/select');
-  }
-});
+usePageTitle(() => t('login'));
 
 const disclaimer = computed(() => remote.auth.currentServer?.BrandingOptions.LoginDisclaimer);
 const publicUsers = computed(() => remote.auth.currentServer?.PublicUsers ?? []);
@@ -130,7 +124,6 @@ async function setCurrentUser(user: UserDto): Promise<void> {
   if (!user.HasPassword && user.Name) {
     // If the user doesn't have a password, avoid showing the password form
     await remote.auth.loginUser(user.Name, '');
-    await router.replace('/');
   } else {
     currentUser.value = user;
   }
@@ -143,4 +136,10 @@ function resetCurrentUser(): void {
   currentUser.value = undefined;
   loginAsOther.value = false;
 }
+
+watch(isConnectedToServer, () => {
+  if (!isConnectedToServer.value) {
+    useSnackbar(t('noServerConnection'), 'error');
+  }
+});
 </script>

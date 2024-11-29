@@ -1,16 +1,18 @@
-<template>
-  <span v-html="sanitizeHtml(html, markdown)" />
-</template>
-
-<script setup lang="ts">
+<script lang="ts">
+import { Static, createVNode, h } from 'vue';
 import { sanitizeHtml } from '@/utils/html';
 
-defineOptions({
-  inheritAttrs: false
-});
-
-defineProps<{
+interface Props {
   html: string;
   markdown?: boolean;
-}>();
+}
+
+const JSafeHtml = ({ html, markdown = false }: Props) => h(
+  createVNode(Static, undefined, sanitizeHtml(html, markdown)),
+  { key: `${html}_${markdown}` }
+);
+
+JSafeHtml.inheritAttrs = false;
+
+export default JSafeHtml;
 </script>

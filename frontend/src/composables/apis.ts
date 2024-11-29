@@ -2,8 +2,8 @@ import type { Api } from '@jellyfin/sdk';
 import type { BaseItemDto, BaseItemDtoQueryResult } from '@jellyfin/sdk/lib/generated-client';
 import type { AxiosResponse } from 'axios';
 import { deepEqual } from 'fast-equals';
-import { computed, effectScope, getCurrentScope, isRef, shallowRef, toValue, unref, watch, type ComputedRef, type Ref } from 'vue';
-import { watchImmediate } from '@vueuse/core';
+import { computed, effectScope, getCurrentScope, inject, isRef, shallowRef, toValue, unref, watch, type ComputedRef, type Ref } from 'vue';
+import { until, whenever } from '@vueuse/core';
 import { useLoading } from '@/composables/use-loading';
 import { useSnackbar } from '@/composables/use-snackbar';
 import { i18n } from '@/plugins/i18n';
@@ -11,8 +11,9 @@ import { remote } from '@/plugins/remote';
 import { isConnectedToServer } from '@/store';
 import { apiStore } from '@/store/api';
 import { isArray, isNil } from '@/utils/validation';
+import { JView_isRouting } from '@/store/keys';
 
-/* eslint-disable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-return */
+/* eslint-disable @typescript-eslint/no-explicit-any */
 type OmittedKeys = 'fields' | 'userId' | 'enableImages' | 'enableTotalRecordCount' | 'enableImageTypes';
 type ParametersAsGetters<T extends (...args: any[]) => any> = T extends (...args: infer P) => any
   ? { [K in keyof P]: () => BetterOmit<Mutable<P[K]>, OmittedKeys> }
@@ -125,7 +126,7 @@ async function resolveAndAdd<T extends Record<K, (...args: any[]) => any>, K ext
   loading: Ref<boolean | undefined> | undefined,
   stringifiedArgs: string,
   ops: Required<ComposableOps>,
-  ...args: Parameters<T[K]>): Promise<ExtractItems<Awaited<ReturnType<T[K]>['data']>> | void> {
+  ...args: Parameters<T[K]>): Promise<ExtractItems<Awaited<ReturnType<T[K]>['data']>> | undefined> {
   /**
    * We add all BaseItemDto's fields for consistency in what we can expect from the store.
    * toValue normalizes the getters.
@@ -135,6 +136,7 @@ async function resolveAndAdd<T extends Record<K, (...args: any[]) => any>, K ext
       ...args[0],
       ...(remote.auth.currentUserId && { userId: remote.auth.currentUserId }),
       fields: apiStore.apiEnums.fields,
+      enableUserData: true,
       enableImageTypes: apiStore.apiEnums.images,
       enableImages: true,
       enableTotalRecordCount: false
@@ -190,6 +192,7 @@ function _sharedInternalLogic<T extends Record<K, (...args: any[]) => any>, K ex
   const stringArgs = computed(() => {
     return JSON.stringify(argsRef.value);
   });
+
   /**
    * TODO: Check why previous returns unknown by default without the type annotation
    */
@@ -232,7 +235,7 @@ function _sharedInternalLogic<T extends Record<K, (...args: any[]) => any>, K ex
     /**
      * Rerun previous parameters when the user is back online
      */
-    if (offlineParams.length > 0) {
+    if (offlineParams.length) {
       await Promise.all(offlineParams.map(p => void resolveAndAdd(p.api, p.methodName, ofBaseItem, loading, stringArgs.value, ops, ...p.args)));
       offlineParams.length = 0;
     }
@@ -258,42 +261,62 @@ function _sharedInternalLogic<T extends Record<K, (...args: any[]) => any>, K ex
 
   return function (this: any, ...args: ComposableParams<T, K, U>) {
     const normalizeArgs = (): Parameters<T[K]> => args.map(a => toValue(a)) as Parameters<T[K]>;
-    const runNormally = async (): Promise<void> => { await run({}); };
-    const runWithRetry = async (): Promise<void> => { await run({ onlyPending: true }); };
+    const runNormally = async (): Promise<void> => {
+      await run({});
+    };
+    const runWithRetry = async (): Promise<void> => {
+      await run({ onlyPending: true });
+    };
     const returnablePromise = async (): Promise<ReturnPayload<T, K, typeof ofBaseItem>> => {
-      const scope = effectScope();
-
       await runNormally();
+      await until(() => isCached.value && !ops.skipCache.request).toBeTruthy({ flush: 'pre' });
 
-      return new Promise((resolve) => {
-        scope.run(() => {
-          watchImmediate(isCached, () => {
-            if (isCached.value && !ops.skipCache.request) {
-              scope.stop();
-              resolve({ loading, data });
-            }
-          }, { flush: 'sync' });
-        });
-      });
+      return { loading, data };
     };
 
     argsRef.value = normalizeArgs();
 
     if (getCurrentScope() !== undefined) {
-      watch(args, async (_newVal, oldVal) => {
+      const handleArgsChange = async (_: typeof args, old: typeof args | undefined): Promise<void> => {
         const normalizedArgs = normalizeArgs();
 
         /**
          * Does a deep comparison to avoid useless double requests
          */
-        if (!normalizedArgs.every((a, index) => deepEqual(a, toValue(oldVal[index])))) {
+        if (old && !normalizedArgs.every((a, index) => deepEqual(a, toValue(old[index])))) {
           argsRef.value = normalizedArgs;
           await runNormally();
         }
+      };
+      const scope = effectScope();
+
+      scope.run(() => {
+        if (args.length) {
+          watch(args, handleArgsChange);
+        }
+
+        watch(isConnectedToServer, runWithRetry);
+
+        if (isRef(api)) {
+          watch(api, runNormally);
+        }
+
+        if (isRef(methodName)) {
+          watch(methodName, runNormally);
+        }
       });
-      watch(isConnectedToServer, runWithRetry);
-      isRef(api) && watch(api, runNormally);
-      isRef(methodName) && watch(methodName, runNormally);
+
+      /**
+       * If we're routing, the effects of this composable are no longer useful, so we stop them
+       * to avoid accidental data fetching (e.g due to route param changes)
+       */
+      const isRouting = inject(JView_isRouting);
+
+      if (!isNil(isRouting)) {
+        whenever(isRouting, () => scope.stop(),
+          { once: true, flush: 'sync' }
+        );
+      }
     }
 
     /**
@@ -304,9 +327,7 @@ function _sharedInternalLogic<T extends Record<K, (...args: any[]) => any>, K ex
      */
     if (isCached.value) {
       void run({ isRefresh: true });
-    }
-
-    if (!isCached.value && isFuncDefined()) {
+    } else if (isFuncDefined()) {
       /**
        * Wait for the cache to be populated before resolving the promise
        * If the promise never resolves (and the component never gets mounted),
@@ -449,4 +470,4 @@ export function methodsAsObject<T extends Record<K, (...args: any[]) => any>, K 
   };
 }
 
-/* eslint-enable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-return */
+/* eslint-enable @typescript-eslint/no-explicit-any */

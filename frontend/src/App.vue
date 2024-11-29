@@ -3,26 +3,9 @@
   <VApp>
     <JApp>
       <RouterView v-slot="{ Component, route }">
-        <JTransition
-          :name="route.meta.layout.transition.enter ?? defaultTransition"
-          :mode="defaultTransitionMode ?? route.meta.layout.transition.mode">
-          <Suspense @resolve="apploaded = true">
-            <AppComp
-              :key="route.meta.layout.name ?? 'default'"
-              :comp="getLayoutComponent(route.meta.layout.name)">
-                <JTransition
-                  :name="route.meta.layout.transition.enter ?? defaultTransition"
-                  :mode="defaultTransitionMode ?? route.meta.layout.transition.mode">
-                  <Suspense suspensible>
-                    <AppComp :key="route.path" :comp="Component" />
-                  </Suspense>
-                </JTransition>
-            </AppComp>
-            <template v-if="!apploaded" #fallback>
-              <JSplashscreen />
-            </template>
-          </Suspense>
-        </JTransition>
+        <JView
+          :comp="Component"
+          :route="route" />
       </RouterView>
     </JApp>
     <Snackbar />
@@ -32,19 +15,7 @@
 </template>
 
 <script setup lang="ts">
-/**
- * TODO: Remove j-transition classes from this file once https://github.com/vuejs/core/issues/5148 is fixed
- */
-import { shallowRef, type Component as VueComponent, onMounted } from 'vue';
-import type { RouteMeta } from 'vue-router/auto';
-import DefaultLayout from '@/layouts/default.vue';
-import FullPageLayout from '@/layouts/fullpage.vue';
-import ServerLayout from '@/layouts/server.vue';
-import AppComp from '@/AppComp.vue';
-
-const apploaded = shallowRef(false);
-const defaultTransition = 'slide-x-reverse';
-const defaultTransitionMode = 'out-in';
+import { onMounted } from 'vue';
 
 /**
  * When app is mounted, the classes and styles we initialized in the pre-Vue splashscreen in body
@@ -56,21 +27,4 @@ onMounted(() => {
   document.body.removeAttribute('class');
   document.body.removeAttribute('style');
 });
-
-/**
- * Return the appropiate layout component according to the route's meta.layout property
- */
-function getLayoutComponent(layout: RouteMeta['layout']['name']): VueComponent {
-  switch (layout) {
-    case 'fullpage': {
-      return FullPageLayout as VueComponent;
-    }
-    case 'server': {
-      return ServerLayout as VueComponent;
-    }
-    default: {
-      return DefaultLayout;
-    }
-  }
-}
 </script>

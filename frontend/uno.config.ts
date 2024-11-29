@@ -1,10 +1,1 @@
-import { defineConfig, presetUno } from 'unocss';
-
-export default defineConfig({
-  presets: [
-    presetUno({
-      prefix: 'uno-',
-      preflight: false
-    })
-  ]
-});
+export { defaultConfig as default } from '@jellyfin-vue/configs/unocss';

@@ -6,7 +6,7 @@
       <tr>
         <th
           style="width: 4em"
-          class="pr-0 text-center"
+          class="text-center pr-0"
           scope="col">
           #
         </th>
@@ -32,7 +32,7 @@
     <tbody>
       <template v-for="(tracksOnDisc, discNumber) in tracksPerDisc">
         <tr
-          v-if="Object.keys(tracksPerDisc).length > 1"
+          v-if="hasMultipleDiscs"
           :key="discNumber"
           class="disc-header">
           <td
@@ -90,7 +90,7 @@
                         :to="getItemDetailsLink(artist, 'MusicArtist')"
                         custom>
                         <span
-                          class="link text--secondary"
+                          class="text--secondary link"
                           @click="navigate">
                           {{ artist.Name }}
                         </span>
@@ -120,25 +120,35 @@ import {
   type BaseItemDto
 } from '@jellyfin/sdk/lib/generated-client';
 import { getItemsApi } from '@jellyfin/sdk/lib/utils/api/items-api';
-import { groupBy } from 'lodash-es';
 import { computed } from 'vue';
 import { useBaseItem } from '@/composables/apis';
 import { playbackManager } from '@/store/playback-manager';
 import { getItemDetailsLink } from '@/utils/items';
 import { formatTicks } from '@/utils/time';
 
-const props = defineProps<{
+const { item } = defineProps<{
   item: BaseItemDto;
 }>();
 
 const { data: tracks } = await useBaseItem(getItemsApi, 'getItems')(() => ({
-  parentId: props.item.Id,
+  parentId: item.Id,
   sortBy: ['SortName'],
   sortOrder: [SortOrder.Ascending]
 }));
 
-const tracksPerDisc = computed(() => {
-  return groupBy(tracks.value, 'ParentIndexNumber');
+const tracksPerDisc = computed(() => Object.groupBy(tracks.value, ({ ParentIndexNumber }) => ParentIndexNumber!));
+const hasMultipleDiscs = computed(() => {
+  let loops = 0;
+
+  for (const _ in tracksPerDisc.value) {
+    loops++;
+
+    if (loops > 1) {
+      return true;
+    }
+  }
+
+  return false;
 });
 
 /**
@@ -152,13 +162,11 @@ function isPlaying(track: BaseItemDto): boolean {
  * Play all the tracks from an item
  */
 async function playTracks(track: BaseItemDto): Promise<void> {
-  if (tracks.value) {
-    await playbackManager.play({
-      item: props.item,
-      startFromIndex: tracks.value.indexOf(track),
-      initiator: props.item
-    });
-  }
+  await playbackManager.play({
+    item: item,
+    startFromIndex: tracks.value.indexOf(track),
+    initiator: item
+  });
 }
 </script>
 

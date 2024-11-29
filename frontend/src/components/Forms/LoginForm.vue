@@ -2,14 +2,14 @@
   <div>
     <VForm
       v-model="valid"
-      :disabled="loading"
+      :disabled="loading || disabled"
       @submit.prevent="userLogin">
       <VTextField
         v-if="!user"
         v-model="login.username"
         variant="outlined"
-        hide-details
         autofocus
+        hide-details
         :label="$t('username')"
         :rules="rules" />
       <VTextField
@@ -24,7 +24,7 @@
       <VCheckbox
         v-model="login.rememberMe"
         hide-details
-        class="mt-6 mb-6"
+        class="mb-6 mt-6"
         color="primary"
         :label="$t('rememberMe')" />
       <VRow
@@ -41,7 +41,7 @@
             {{ $t('changeServer') }}
           </VBtn>
           <VBtn
-            v-else
+            v-else-if="remote.auth.currentServer?.PublicUsers.length"
             block
             size="large"
             variant="elevated"
@@ -51,7 +51,7 @@
         </VCol>
         <VCol class="mr-2">
           <VBtn
-            :disabled="!valid"
+            :disabled="!valid || disabled"
             :loading="loading"
             block
             size="large"
@@ -72,21 +72,17 @@ import IconEye from 'virtual:icons/mdi/eye';
 import IconEyeOff from 'virtual:icons/mdi/eye-off';
 import { ref, shallowRef } from 'vue';
 import { useI18n } from 'vue-i18n';
-import { useRouter } from 'vue-router/auto';
 import { fetchIndexPage } from '@/utils/items';
 import { remote } from '@/plugins/remote';
-import { getJSONConfig } from '@/utils/external-config';
+import { jsonConfig } from '@/utils/external-config';
 
-const props = defineProps<{ user?: UserDto }>();
+const { user, disabled } = defineProps<{ user?: UserDto; disabled?: boolean }>();
 
 defineEmits<{
   change: [];
 }>();
 
-const jsonConfig = await getJSONConfig();
 const { t } = useI18n();
-
-const router = useRouter();
 
 const valid = shallowRef(false);
 const login = ref({ username: '', password: '', rememberMe: true });
@@ -100,11 +96,11 @@ const rules = [
  * Login the user into the client
  */
 async function userLogin(): Promise<void> {
-  if (props.user) {
+  if (user) {
     /**
      * If we have a user from the public user selector, set it as login
      */
-    login.value.username = props.user.Name || '';
+    login.value.username = user.Name ?? '';
   }
 
   loading.value = true;
@@ -121,9 +117,7 @@ async function userLogin(): Promise<void> {
      * loading spinner active until we redirect the user.
      */
     await fetchIndexPage();
-
-    await router.replace('/');
-  } finally {
+  } catch {
     loading.value = false;
   }
 }

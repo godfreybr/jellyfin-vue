@@ -37,7 +37,7 @@
         class="pa-2 flex-fill">
         <VWindowItem value="general">
           <VSelect
-            v-if="contentOptions.length > 0"
+            v-if="contentOptions.length"
             v-model="contentOption"
             :items="contentOptions"
             :label="t('contentType')"
@@ -72,7 +72,9 @@
             :value="dateCreated"
             :label="t('dateAdded')"
             @update:date="
-              (value) => formatAndAssignDate('DateCreated', value)
+              (value) => {
+                metadata!.DateCreated = formatISO(new Date(value))
+              }
             " />
           <VRow>
             <VCol
@@ -97,7 +99,9 @@
             :value="premiereDate"
             :label="t('releaseDate')"
             @update:date="
-              (value) => formatAndAssignDate('PremiereDate', value)
+              (value) => {
+                metadata!.PremiereDate = formatISO(new Date(value))
+              }
             " />
           <VTextField
             v-model="metadata.ProductionYear"
@@ -152,8 +156,9 @@
                 <VAvatar>
                   <JImg
                     v-if="item.Id && item.PrimaryImageTag"
+                    :alt="$t('person')"
                     :src="
-                      remote.sdk.api?.getItemImageUrl(
+                      getItemImageUrl(
                         item.Id,
                         ImageType.Primary
                       )
@@ -226,21 +231,22 @@ import { getLibraryApi } from '@jellyfin/sdk/lib/utils/api/library-api';
 import { getUserLibraryApi } from '@jellyfin/sdk/lib/utils/api/user-library-api';
 import { AxiosError } from 'axios';
 import { format, formatISO } from 'date-fns';
-import { pick, set } from 'lodash-es';
 import { computed, ref } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { watchImmediate } from '@vueuse/core';
+import { getItemImageUrl } from '@/utils/images';
 import { isArray } from '@/utils/validation';
 import { remote } from '@/plugins/remote';
 import { useSnackbar } from '@/composables/use-snackbar';
 import { useDateFns } from '@/composables/use-datefns';
+import { pick } from '@/utils/data-manipulation';
 
 interface ContentOption {
   value: string;
   key: string;
 }
 
-const props = defineProps<{ itemId: string }>();
+const { itemId } = defineProps<{ itemId: string }>();
 
 const emit = defineEmits<{
   'save': [];
@@ -251,7 +257,6 @@ const emit = defineEmits<{
 const { t } = useI18n();
 
 const metadata = ref<BaseItemDto>();
-const menu = ref(false);
 const person = ref<BaseItemPerson>();
 const genres = ref<string[]>([]);
 const loading = ref(false);
@@ -316,13 +321,13 @@ async function getData(): Promise<void> {
   const itemInfo = (
     await remote.sdk.newUserApi(getUserLibraryApi).getItem({
       userId: remote.auth.currentUserId ?? '',
-      itemId: props.itemId
+      itemId: itemId
     })
   ).data;
 
   const options = (
     await remote.sdk.newUserApi(getItemUpdateApi).getMetadataEditorInfo({
-      itemId: props.itemId
+      itemId: itemId
     })
   ).data;
 
@@ -478,18 +483,6 @@ async function saveMetadata(): Promise<void> {
 }
 
 /**
- * Formats and updates dates
- */
-function formatAndAssignDate(key: keyof BaseItemDto, date: string): void {
-  if (!metadata.value) {
-    return;
-  }
-
-  menu.value = false;
-  set(metadata.value, key, formatISO(new Date(date)));
-}
-
-/**
  * Handle adding a person
  */
 function onPersonAdd(): void {
@@ -534,5 +527,5 @@ function onPersonDel(index: number): void {
   metadata.value.People.splice(index, 1);
 }
 
-watchImmediate(() => props.itemId, getData);
+watchImmediate(() => itemId, getData);
 </script>

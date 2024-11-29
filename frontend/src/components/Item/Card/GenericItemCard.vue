@@ -9,23 +9,23 @@
           :class="shape"
           class="elevation-2">
           <div
-            class="absolute-cover card-content d-flex justify-center align-center">
-            <RSlot class="card-image">
+            class="d-flex align-center justify-center absolute-cover card-content">
+            <JSlot class="card-image">
               <slot
                 name="image" />
-            </RSlot>
+            </JSlot>
           </div>
           <div
-            class="absolute-cover card-overlay d-flex justify-center align-center"
-            :class="{ 'card-overlay-hover': overlay && isFinePointer }">
-            <div class="card-upper-content d-flex justify-center align-center">
+            class="absolute-cover d-flex justify-center align-center card-overlay"
+            :class="{ 'card-overlay-hover': overlay && hasFinePointer }">
+            <div class="d-flex justify-center align-center card-upper-content">
               <slot name="upper-content" />
             </div>
             <div
-              v-if="(isHovering && overlay && isFinePointer) || forceOverlay"
+              v-if="(isHovering && overlay && hasFinePointer) || forceOverlay"
               class="card-overlay-hover-hidden">
               <slot name="center-content" />
-              <div class="card-lower-content d-flex justify-center align-center">
+              <div class="d-flex justify-center align-center card-lower-content">
                 <slot name="bottom-content" />
               </div>
             </div>
@@ -43,7 +43,7 @@
     <div
       v-if="$slots.title || ($slots.title && $slots.subtitle)"
       class="card-text">
-      <a class="d-block font-weight-medium pa-0 mt-1 text-truncate">
+      <a class="font-weight-medium pa-0 mt-1 text-truncate d-block">
         <slot name="title" />
       </a>
       <a class="v-card-subtitle">
@@ -57,10 +57,10 @@
 <script setup lang="ts">
 import { useAttrs, computed } from 'vue';
 import { isNil } from '@/utils/validation';
-import { isFinePointer } from '@/store';
+import { hasFinePointer } from '@/store';
 import type { CardShapes } from '@/utils/items';
 
-interface Props {
+const { shape, progress, overlay, forceOverlay, to, margin } = defineProps<{
   shape: CardShapes;
   /**
    * Progress to show in the bottom of the image
@@ -83,9 +83,7 @@ interface Props {
    * Whether to apply a margin to the card
    */
   margin?: boolean;
-}
-
-defineProps<Props>();
+}>();
 
 const attrs = useAttrs();
 
@@ -164,7 +162,7 @@ const hasClick = computed(() => !!attrs.onClick);
 
 @media (hover: hover) and (pointer: fine) {
   .card-box:hover .card-overlay-hover {
-    background: rgba(var(--v-theme-background), 0.5);
+    background: rgba(var(--j-color-background), 0.5);
   }
   .card-box:hover .card-overlay-hover .card-overlay-hover-hidden {
     opacity: 1;

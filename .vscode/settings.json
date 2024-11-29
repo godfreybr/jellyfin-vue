@@ -28,12 +28,17 @@
     "javascript",
     "typescript"
   ],
+  "eslint.options": { 
+    "flags": ["unstable_ts_config"] 
+  },
   "eslint.format.enable": true,
+  "eslint.useFlatConfig": true,
   "eslint.workingDirectories": [
     {
       "mode": "auto"
     }
   ],
+  "vue.server.hybridMode": true,
   "vue.autoInsert.dotValue": true,
   "vue.inlayHints.missingProps": true,
   "vue.complete.casing.props": "kebab",
@@ -42,13 +47,13 @@
   "vue.format.style.initialIndent": true,
   "vue.inlayHints.inlineHandlerLeading": true,
   "vue.inlayHints.vBindShorthand": true,
-  "vue.server.hybridMode": false,
+  "vue.inlayHints.optionsWrapper": true,
+  "vue.inlayHints.destructuredProps": true,
   "sonarlint.output.showAnalyzerLogs": true,
   "sonarlint.output.showVerboseLogs": true,
   "sonarlint.connectedMode.project": {
     "connectionId": "jellyfin-vue",
     "projectKey": "jellyfin_jellyfin-vue"
   },
-  "typescript.preferences.autoImportFileExcludePatterns": ["vue-router"],
   "typescript.tsserver.experimental.enableProjectDiagnostics": true
 }

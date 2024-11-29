@@ -8,6 +8,8 @@ import {
   type BaseItemPerson,
   ImageType
 } from '@jellyfin/sdk/lib/generated-client';
+import { getImageApi } from '@jellyfin/sdk/lib/utils/api/image-api';
+import type { ImageUrlsApi } from '@jellyfin/sdk/lib/utils/api/image-urls-api';
 import { remote } from '@/plugins/remote';
 import { CardShapes, getShapeFromItemType, isPerson } from '@/utils/items';
 
@@ -19,6 +21,13 @@ export interface ImageUrlInfo {
 const excludedBlurhashTypes = Object.freeze(
   new Set<ImageType>([ImageType.Logo])
 );
+
+/**
+ * Gets the image URL given an item id and the image type requested
+ */
+export function getItemImageUrl(...args: Parameters<ImageUrlsApi['getItemImageUrlById']>) {
+  return remote.sdk.newUserApi(getImageApi).getItemImageUrlById(...args);
+}
 
 /**
  * Gets the tag of the image of an specific item and type.
@@ -52,9 +61,9 @@ export function getImageTag(
       case ImageType.Primary: {
         return (
           item.AlbumPrimaryImageTag
-          || item.ChannelPrimaryImageTag
-          || item.ParentPrimaryImageTag
-          || undefined
+          ?? item.ChannelPrimaryImageTag
+          ?? item.ParentPrimaryImageTag
+          ?? undefined
         );
       }
       case ImageType.Art: {
@@ -118,16 +127,14 @@ export function getBlurhash(
   index = 0,
   checkParent = true
 ): string | undefined {
-  if (item) {
-    const tag = getImageTag(item, type, index, checkParent);
+  const tag = getImageTag(item, type, index, checkParent);
 
-    if (
-      tag
-      && !excludedBlurhashTypes.has(type)
-      && item.ImageBlurHashes?.[type]?.[tag]
-    ) {
-      return item.ImageBlurHashes[type]?.[tag];
-    }
+  if (
+    tag
+    && !excludedBlurhashTypes.has(type)
+    && item.ImageBlurHashes?.[type]?.[tag]
+  ) {
+    return item.ImageBlurHashes[type][tag];
   }
 }
 
@@ -273,15 +280,13 @@ export function getImageInfo(
     itemId = item.ParentThumbItemId;
   } else if (
     preferThumb
-    && item.BackdropImageTags
-    && item.BackdropImageTags.length > 0
+    && item.BackdropImageTags?.length
   ) {
     imgType = ImageType.Backdrop;
     imgTag = item.BackdropImageTags[0];
   } else if (
     preferThumb
-    && item.ParentBackdropImageTags
-    && item.ParentBackdropImageTags.length > 0
+    && item.ParentBackdropImageTags?.length
     && inheritThumb
     && item.Type === BaseItemKind.Episode
   ) {
@@ -317,7 +322,7 @@ export function getImageInfo(
   ) {
     imgType = ImageType.Thumb;
     imgTag = item.ImageTags.Thumb;
-  } else if (item.BackdropImageTags && item.BackdropImageTags.length > 0) {
+  } else if (item.BackdropImageTags?.length) {
     imgType = ImageType.Backdrop;
     imgTag = item.BackdropImageTags[0];
   } else if (item.ImageTags?.Thumb) {
@@ -332,8 +337,7 @@ export function getImageInfo(
     imgTag = item.ParentThumbImageTag;
     itemId = item.ParentThumbItemId;
   } else if (
-    item.ParentBackdropImageTags
-    && item.ParentBackdropImageTags.length > 0
+    item.ParentBackdropImageTags?.length
     && inheritThumb
   ) {
     imgType = ImageType.Backdrop;
@@ -352,7 +356,7 @@ export function getImageInfo(
     };
   }
 
-  const url_string = remote.sdk.api?.getItemImageUrl(itemId, imgType);
+  const url_string = getItemImageUrl(itemId, imgType);
 
   if (imgTag && imgType && url_string) {
     url = new URL(url_string);
@@ -425,7 +429,7 @@ export function getLogo(
   }
 
   if (imgTag && imgType && itemId) {
-    url = new URL(remote.sdk.api?.getItemImageUrl(itemId, imgType) ?? '');
+    url = new URL(getItemImageUrl(itemId, imgType));
 
     const parameters: Record<string, string> = {
       imgTag,

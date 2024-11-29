@@ -3,7 +3,7 @@
     :class="`swiper-section-${uuid}`"
     style="width: 100%">
     <VCol
-      v-show="items && items.length > 0"
+      v-show="items && items.length"
       class="swiper-section">
       <div class="d-flex ma-2">
         <h1
@@ -66,18 +66,17 @@ import 'swiper/css/free-mode';
 import 'swiper/css/virtual';
 import { A11y, FreeMode, Navigation, Virtual } from 'swiper/modules';
 import { Swiper, SwiperSlide } from 'swiper/vue';
-import { v4 } from 'uuid';
-import { computed } from 'vue';
+import { computed, useId } from 'vue';
 import { useDisplay, useTheme } from 'vuetify';
 import { CardShapes } from '@/utils/items';
 
-const props = defineProps<{
+const { title, items, shape } = defineProps<{
   title: string;
   items: BaseItemDto[];
   shape?: CardShapes;
 }>();
 
-const uuid = v4();
+const uuid = useId();
 const display = useDisplay();
 const theme = useTheme();
 
@@ -90,19 +89,19 @@ const navigation = {
   prevEl: `.swiper-section-${uuid} .swiper-prev`,
   disabledClass: 'swiper-button-disabled v-btn--disabled'
 };
-const slides = computed(() => props.shape === CardShapes.Thumb ? 2 : 3);
+const slides = computed(() => shape === CardShapes.Thumb ? 2 : 3);
 const breakpoints = computed(() => ({
   600: {
-    slidesPerView: props.shape === CardShapes.Thumb ? 3 : 4,
-    slidesPerGroup: props.shape === CardShapes.Thumb ? 3 : 4
+    slidesPerView: shape === CardShapes.Thumb ? 3 : 4,
+    slidesPerGroup: shape === CardShapes.Thumb ? 3 : 4
   },
   960: {
-    slidesPerView: props.shape === CardShapes.Thumb ? 3 : 6,
-    slidesPerGroup: props.shape === CardShapes.Thumb ? 3 : 6
+    slidesPerView: shape === CardShapes.Thumb ? 3 : 6,
+    slidesPerGroup: shape === CardShapes.Thumb ? 3 : 6
   },
   1904: {
-    slidesPerView: props.shape === CardShapes.Thumb ? 4 : 8,
-    slidesPerGroup: props.shape === CardShapes.Thumb ? 4 : 8
+    slidesPerView: shape === CardShapes.Thumb ? 4 : 8,
+    slidesPerGroup: shape === CardShapes.Thumb ? 4 : 8
   }
 }));
 </script>

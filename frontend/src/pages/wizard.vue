@@ -8,7 +8,7 @@
         sm="12"
         md="12"
         xl="8">
-        <h1 class="text-h4 mb-6 text-center">
+        <h1 class="text-center mb-6 text-h4">
           {{ heading }}
         </h1>
         <!-- TODO: Wait for Vuetify 3 implementation (https://github.com/vuetifyjs/vuetify/issues/13509) -->
@@ -91,7 +91,7 @@ meta:
 import { getStartupApi } from '@jellyfin/sdk/lib/utils/api/startup-api';
 import { computed, ref } from 'vue';
 import { useI18n } from 'vue-i18n';
-import { useRouter } from 'vue-router/auto';
+import { useRouter } from 'vue-router';
 import { useSnackbar } from '@/composables/use-snackbar';
 import { remote } from '@/plugins/remote';
 

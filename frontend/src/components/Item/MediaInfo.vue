@@ -21,12 +21,11 @@
     <span v-if="item.Type === 'MusicAlbum' && item.ChildCount && tracks">
       {{ $t('numberTracks', { number: item.ChildCount }) }}
     </span>
-    <!-- TODO: Track https://github.com/vuejs/core/pull/7306 -->
     <span v-if="item.RunTimeTicks && runtime">
-      {{ getRuntimeTime(item.RunTimeTicks).value }}
+      {{ getRuntimeTime(item.RunTimeTicks) }}
     </span>
     <span v-if="item.RunTimeTicks && endsAt">
-      {{ getEndsAtTime(item.RunTimeTicks).value }}
+      {{ getEndsAtTime(item.RunTimeTicks) }}
     </span>
   </div>
 </template>
@@ -35,19 +34,14 @@
 import type { BaseItemDto } from '@jellyfin/sdk/lib/generated-client';
 import { getEndsAtTime, getRuntimeTime } from '@/utils/time';
 
-withDefaults(
-  defineProps<{
-    item: BaseItemDto;
-    year?: boolean;
-    rating?: boolean;
-    runtime?: boolean;
-    tracks?: boolean;
-    endsAt?: boolean;
-  }>(),
-  {
-    endsAt: false
-  }
-);
+const { item, year, rating, runtime, tracks, endsAt } = defineProps<{
+  item: BaseItemDto;
+  year?: boolean;
+  rating?: boolean;
+  runtime?: boolean;
+  tracks?: boolean;
+  endsAt?: boolean;
+}>();
 </script>
 
 <style scoped>

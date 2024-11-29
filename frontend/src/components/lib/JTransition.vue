@@ -1,35 +1,65 @@
 <template>
   <component
-    :is="props.group ? TransitionGroup : Transition"
+    :is="group ? TransitionGroup : Transition"
     class="j-transition"
-    v-bind="mergeProps($props, $attrs)"
-    :name="prefersNoMotion || props.disabled ? undefined : `j-transition-${props.name}`">
-    <slot />
+    v-bind="$attrs"
+    :name="forcedDisable || disabled ? undefined : `j-transition-${name}`"
+    @before-leave="() => {
+      leaving = true;
+      $attrs.onBeforeLeave?.();
+    }"
+    @after-leave="() => {
+      onNoLeave();
+      $attrs.onAfterLeave?.();
+    }"
+    @leave-cancelled="() => {
+      onNoLeave();
+      $attrs.onLeaveCancelled?.();
+    }">
+    <!-- Transition only supports a single child, so we handle a possible misuse here wrapping if necessary -->
+    <span v-if="$slots.default().length > 1 && !group">
+      <slot />
+    </span>
+    <slot v-else />
   </component>
 </template>
 
-<script setup lang="ts">
-import { Transition, TransitionGroup, type TransitionProps, mergeProps } from 'vue';
-import { prefersNoMotion } from '@/store';
+<script lang="ts">
+import { Transition, TransitionGroup, type TransitionProps, shallowRef, computed } from 'vue';
+import { prefersNoMotion, isSlow } from '@/store';
+import { usePausableEffect } from '@/composables/use-pausable-effect';
 
-export interface JTransitionProps extends BetterOmit<TransitionProps, 'name'> {
+interface Props {
   name?: 'fade' | 'rotated-zoom' | 'slide-y' | 'slide-y-reverse' | 'slide-x' | 'slide-x-reverse';
   /**
-   * Transition group props
-   */
-  tag?: string;
-  moveClass?: string;
-  /**
-   * JTransition custom props
+   * If the component needs to be rendered as a TransitionGroup
    */
   group?: boolean;
+  /**
+   * If the transition should be disabled
+   */
   disabled?: boolean;
+  /**
+   * Don't stop patching the DOM while transitioning
+   */
+  skipPausing?: boolean;
 }
 
-const props = withDefaults(defineProps<JTransitionProps>(), { name: 'fade', group: undefined, disabled: undefined });
+export type JTransitionProps = TransitionProps & Props;
+const forcedDisable = computed(() => prefersNoMotion.value || isSlow.value);
 </script>
 
-<!-- TODO: Set scoped and remove .j-transition* prefix after: https://github.com/vuejs/core/issues/5148 -->
+<script setup lang="ts">
+const { name = 'fade', group, disabled, skipPausing } = defineProps<Props>();
+const leaving = shallowRef(false);
+const onNoLeave = () => leaving.value = false;
+
+if (!skipPausing) {
+  usePausableEffect(leaving);
+}
+</script>
+
+<!-- TODO: Set scoped and remove .j-transition* prefix after: https://github.com/vuejs/core/issues/5148#issuecomment-2041118368 -->
 
 <style>
 .j-transition {

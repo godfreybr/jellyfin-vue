@@ -1,6 +1,6 @@
 <template>
   <VBtn
-    v-if="options.length > 0"
+    v-if="options.length"
     :variant="outlined ? 'outlined' : undefined"
     icon
     size="small"
@@ -20,7 +20,7 @@
       <VList nav>
         <template v-for="(section, index1) in options">
           <VDivider
-            v-if="section.length > 0 && index1 > 0"
+            v-if="section.length && index1 > 0"
             :key="`item-${item.Id}-section-${index1}-divider`" />
           <VListItem
             v-for="(menuOption, index2) in section"
@@ -40,15 +40,15 @@
     @close="metadataDialog = false" />
   <RefreshMetadataDialog
     v-if="refreshDialog && item.Id"
-    :item="menuProps.item"
+    :item="item"
     @close="refreshDialog = false" />
   <IdentifyDialog
     v-if="identifyItemDialog && item.Id"
-    :item="menuProps.item"
+    :item="item"
     @close="identifyItemDialog = false" />
   <MediaDetailDialog
     v-if="mediaInfoDialog && item.Id"
-    :item="menuProps.item"
+    :item="item"
     :media-source-index="mediaSourceIndex"
     @close="mediaInfoDialog = false" />
 </template>
@@ -56,7 +56,6 @@
 <script lang="ts">
 import type { BaseItemDto } from '@jellyfin/sdk/lib/generated-client';
 import { useClipboard, useEventListener } from '@vueuse/core';
-import { v4 } from 'uuid';
 import IMdiArrowExpandDown from 'virtual:icons/mdi/arrow-expand-down';
 import IMdiArrowExpandUp from 'virtual:icons/mdi/arrow-expand-up';
 import IMdiCloudSearch from 'virtual:icons/mdi/cloud-search-outline';
@@ -71,9 +70,9 @@ import IMdiPlaylistPlus from 'virtual:icons/mdi/playlist-plus';
 import IMdiRefresh from 'virtual:icons/mdi/refresh';
 import IMdiReplay from 'virtual:icons/mdi/replay';
 import IMdiShuffle from 'virtual:icons/mdi/shuffle';
-import { computed, getCurrentInstance, onMounted, shallowRef, watch } from 'vue';
+import { computed, getCurrentInstance, onMounted, shallowRef, useId, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
-import { useRoute, useRouter } from 'vue-router/auto';
+import { useRoute, useRouter } from 'vue-router';
 import { isStr } from '@/utils/validation';
 import {
   canIdentify,
@@ -106,23 +105,13 @@ const openMenu = shallowRef<string>();
 </script>
 
 <script setup lang="ts">
-const menuProps = withDefaults(
-  defineProps<{
-    item: BaseItemDto;
-    outlined?: boolean;
-    zIndex?: number;
-    rightClick?: boolean;
-    queue?: boolean;
-    mediaSourceIndex?: number;
-  }>(),
-  {
-    outlined: false,
-    zIndex: 1000,
-    rightClick: true,
-    queue: false,
-    mediaSourceIndex: undefined
-  }
-);
+const { item, outlined, zIndex = 1000, queue, mediaSourceIndex } = defineProps<{
+  item: BaseItemDto;
+  outlined?: boolean;
+  zIndex?: number;
+  queue?: boolean;
+  mediaSourceIndex?: number;
+}>();
 
 const emit = defineEmits<{
   active: [];
@@ -130,7 +119,7 @@ const emit = defineEmits<{
 }>();
 
 const { t } = useI18n();
-const instanceId = v4();
+const instanceId = useId();
 const router = useRouter();
 const route = useRoute();
 
@@ -150,7 +139,7 @@ const show = computed({
 
 const itemId = computed(
   () => getItemIdFromSourceIndex(
-    menuProps.item, menuProps.mediaSourceIndex
+    item, mediaSourceIndex
   )
 );
 const positionX = shallowRef<number | undefined>();
@@ -168,12 +157,11 @@ watch(isActive, (newVal) => {
 
 const errorMessage = t('anErrorHappened');
 const isItemRefreshing = computed(
-  () => taskManager.getTask(menuProps.item.Id ?? '') !== undefined
+  () => taskManager.getTask(item.Id ?? '') !== undefined
 );
 const itemDeletionName = computed(() => {
-  const parentName = menuProps.item.Name ?? undefined;
-  const mediaSource
-    = menuProps.item.MediaSources?.[menuProps.mediaSourceIndex ?? -1];
+  const parentName = item.Name ?? undefined;
+  const mediaSource = item.MediaSources?.[mediaSourceIndex ?? -1];
 
   if (mediaSource?.Name) {
     let name = mediaSource.Name;
@@ -198,7 +186,7 @@ const playNextAction = {
   title: t('playNext'),
   icon: IMdiPlaySpeed,
   action: async (): Promise<void> => {
-    await playbackManager.playNext(menuProps.item);
+    await playbackManager.playNext(item);
     useSnackbar(t('itemPlayNext'), 'success');
   }
 };
@@ -206,14 +194,14 @@ const pushToTopOfQueueAction = {
   title: t('pushToTop'),
   icon: IMdiArrowExpandUp,
   action: (): void => {
-    playbackManager.changeItemPosition(menuProps.item.Id, 0);
+    playbackManager.changeItemPosition(item.Id, 0);
   }
 };
 const removeFromQueueAction = {
   title: t('removeFromQueue'),
   icon: IMdiPlaylistMinus,
   action: (): void => {
-    playbackManager.removeFromQueue(menuProps.item.Id || '');
+    playbackManager.removeFromQueue(item.Id || '');
   }
 };
 const pushToBottomOfQueueAction = {
@@ -221,7 +209,7 @@ const pushToBottomOfQueueAction = {
   icon: IMdiArrowExpandDown,
   action: (): void => {
     playbackManager.changeItemPosition(
-      menuProps.item.Id,
+      item.Id,
       playbackManager.queue.length - 1
     );
   }
@@ -231,7 +219,7 @@ const playFromBeginningAction = {
   icon: IMdiReplay,
   action: async (): Promise<void> => {
     await playbackManager.play({
-      item: menuProps.item
+      item: item
     });
   }
 };
@@ -240,8 +228,8 @@ const shuffleAction = {
   icon: IMdiShuffle,
   action: async (): Promise<void> => {
     await playbackManager.play({
-      item: menuProps.item,
-      initiator: menuProps.item,
+      item: item,
+      initiator: item,
       startShuffled: true
     });
   }
@@ -250,7 +238,7 @@ const addToQueueAction = {
   title: t('addToQueue'),
   icon: IMdiPlaylistPlus,
   action: async (): Promise<void> => {
-    await playbackManager.addToQueue(menuProps.item);
+    await playbackManager.addToQueue(item);
     useSnackbar(t('addedToQueue'), 'success');
   }
 };
@@ -258,9 +246,9 @@ const instantMixAction = {
   title: t('instantMix'),
   icon: IMdiDisc,
   action: async (): Promise<void> => {
-    if (menuProps.item.Id) {
+    if (item.Id) {
       try {
-        await playbackManager.instantMixFromItem(menuProps.item.Id);
+        await playbackManager.instantMixFromItem(item.Id);
         useSnackbar(t('instantMixQueued'), 'success');
       } catch {
         useSnackbar(errorMessage, 'error');
@@ -306,7 +294,7 @@ const deleteItemAction = {
         try {
           await apiStore.itemDelete(itemId.value);
 
-          if (itemId.value === menuProps.item.Id && route.fullPath.includes(itemId.value)) {
+          if (itemId.value === item.Id && route.fullPath.includes(itemId.value)) {
             await router.replace('/');
           }
         } catch (error) {
@@ -344,14 +332,14 @@ const copyDownloadURLAction = {
       return;
     }
 
-    if (menuProps.item.Id) {
-      switch (menuProps.item.Type) {
+    if (item.Id) {
+      switch (item.Type) {
         case 'Season': {
-          streamUrls = await getItemSeasonDownloadMap(menuProps.item.Id);
+          streamUrls = await getItemSeasonDownloadMap(item.Id);
           break;
         }
         case 'Series': {
-          streamUrls = await getItemSeriesDownloadMap(menuProps.item.Id);
+          streamUrls = await getItemSeriesDownloadMap(item.Id);
           break;
         }
         default: {
@@ -400,18 +388,18 @@ function getQueueOptions(): MenuOption[] {
   const queueOptions: MenuOption[] = [];
 
   if (
-    menuProps.queue
-    && playbackManager.queueIds.includes(menuProps.item.Id || '')
+    queue
+    && playbackManager.queueIds.includes(item.Id || '')
   ) {
     queueOptions.push(pushToTopOfQueueAction);
 
-    if (playbackManager.currentItem?.Id !== menuProps.item.Id) {
+    if (playbackManager.currentItem?.Id !== item.Id) {
       queueOptions.push(removeFromQueueAction);
     }
 
     if (
-      playbackManager.nextItem?.Id !== menuProps.item.Id
-      && playbackManager.currentItem?.Id !== menuProps.item.Id
+      playbackManager.nextItem?.Id !== item.Id
+      && playbackManager.currentItem?.Id !== item.Id
     ) {
       queueOptions.push(playNextAction);
     }
@@ -428,7 +416,7 @@ function getQueueOptions(): MenuOption[] {
 function getPlaybackOptions(): MenuOption[] {
   const playbackOptions: MenuOption[] = [];
 
-  if (canResume(menuProps.item)) {
+  if (canResume(item)) {
     playbackOptions.push(playFromBeginningAction);
   }
 
@@ -436,9 +424,9 @@ function getPlaybackOptions(): MenuOption[] {
 
   if (playbackManager.currentItem) {
     if (
-      playbackManager.nextItem?.Id !== menuProps.item.Id
-      && playbackManager.currentItem.Id !== menuProps.item.Id
-      && !menuProps.queue
+      playbackManager.nextItem?.Id !== item.Id
+      && playbackManager.currentItem.Id !== item.Id
+      && !queue
     ) {
       playbackOptions.push(playNextAction);
     }
@@ -446,7 +434,7 @@ function getPlaybackOptions(): MenuOption[] {
     playbackOptions.push(addToQueueAction);
   }
 
-  if (canInstantMix(menuProps.item) && playbackManager.currentItem) {
+  if (canInstantMix(item) && playbackManager.currentItem) {
     playbackOptions.push(instantMixAction);
   }
 
@@ -472,18 +460,18 @@ function getCopyOptions(): MenuOption[] {
 function getLibraryOptions(): MenuOption[] {
   const libraryOptions: MenuOption[] = [];
 
-  if (menuProps.item.MediaSources) {
+  if (item.MediaSources) {
     libraryOptions.push(mediaInfoAction);
   }
 
-  if (canRefreshMetadata(menuProps.item)) {
+  if (canRefreshMetadata(item)) {
     libraryOptions.push(refreshAction);
   }
 
   if (remote.auth.currentUser?.Policy?.IsAdministrator) {
     libraryOptions.push(editMetadataAction);
 
-    if (canIdentify(menuProps.item)) {
+    if (canIdentify(item)) {
       libraryOptions.push(identifyItemAction);
     }
   }

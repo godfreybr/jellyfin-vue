@@ -19,8 +19,8 @@
     <SearchField />
     <VSpacer />
     <AppBarButtonLayout
-      v-if="!remote.socket.isConnected.value || !isConnectedToServer"
-      :color="!remote.socket.isConnected.value ? 'yellow' : 'red'">
+      v-hide="remote.socket.isConnected.value && isConnectedToServer"
+      :color="isConnectedToServer ? 'yellow' : 'red'">
       <template #icon>
         <VIcon>
           <IMdiNetworkOffOutline />
@@ -60,14 +60,14 @@
 
 <script setup lang="ts">
 import { computed, inject, type Ref } from 'vue';
-import { useRoute } from 'vue-router/auto';
-import { windowScroll, isConnectedToServer } from '@/store';
+import { windowScroll, isConnectedToServer, transparencyEffects } from '@/store';
 import { clientSettings } from '@/store/client-settings';
 import { remote } from '@/plugins/remote';
+import { JView_isRouting } from '@/store/keys';
 
-const route = useRoute();
 const { y } = windowScroll;
-const transparentAppBar = computed(() => route.meta.layout.transparent && y.value < 10);
+const isRouting = inject(JView_isRouting);
+const transparentAppBar = computed(previous => isRouting?.value ? previous : transparencyEffects.value && y.value < 10);
 
 /**
  * Cycle between the different color schemas

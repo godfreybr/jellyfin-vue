@@ -39,10 +39,6 @@ class ApiStore {
   /**
    * == STATE SECTION ==
    */
-  /**
-   * Maps can be cleared (see this._clear), so no need to perform an structuredClone
-   * of the defaultState here
-   */
   private readonly _items = reactive(new Map<BaseItemDto['Id'], BaseItemDto>());
   private readonly _requests = reactive(new Map<string, Map<string, CachedResponse>>());
   public readonly apiEnums = Object.freeze({
@@ -138,7 +134,7 @@ class ApiStore {
    * @param itemIds - Ids of the items to update
    */
   private readonly _update = async (itemIds: BaseItemDto['Id'][]): Promise<void> => {
-    if (itemIds.length > 0) {
+    if (itemIds.length) {
       const { data } = await remote.sdk.newUserApi(getItemsApi).getItems({
         userId: remote.auth.currentUserId,
         ids: itemIds as string[],
@@ -196,7 +192,6 @@ class ApiStore {
             (updatedData: unknown): updatedData is { ItemId: string } => {
               if (
                 isObj(updatedData)
-                && updatedData
                 && 'ItemId' in updatedData
                 && isStr(updatedData.ItemId)
               ) {
@@ -217,9 +212,13 @@ class ApiStore {
     watch(
       () => remote.auth.currentUser,
       () => {
-        if (!remote.auth.currentUser) {
-          this._clear();
-        }
+        globalThis.requestAnimationFrame(() => {
+          globalThis.setTimeout(() => {
+            if (!remote.auth.currentUser) {
+              this._clear();
+            }
+          });
+        });
       }, { flush: 'post' }
     );
   }

@@ -4,9 +4,8 @@
       :title="t('youMayAlsoLike')"
       :items="relatedItems" />
   </div>
-  <div v-else-if="vertical">
+  <div v-else-if="vertical && relatedItems.length">
     <h2
-      v-if="relatedItems.length > 0"
       class="text-h6 text-sm-h5">
       <slot>
         {{ t('youMayAlsoLike') }}
@@ -15,7 +14,7 @@
     <VList
       bg-color="transparent"
       lines="two">
-      <div v-if="relatedItems.length > 0">
+      <div>
         <VListItem
           v-for="relatedItem in relatedItems"
           :key="relatedItem.Id"
@@ -40,15 +39,10 @@ import type { BaseItemDto } from '@jellyfin/sdk/lib/generated-client';
 import { useI18n } from 'vue-i18n';
 import { getItemDetailsLink } from '@/utils/items';
 
-withDefaults(
-  defineProps<{
-    relatedItems: BaseItemDto[];
-    vertical?: boolean;
-  }>(),
-  {
-    vertical: false
-  }
-);
+const { relatedItems, vertical } = defineProps<{
+  relatedItems: BaseItemDto[];
+  vertical?: boolean;
+}>();
 
 const { t } = useI18n();
 </script>
