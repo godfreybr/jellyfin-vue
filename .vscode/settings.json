@@ -17,20 +17,22 @@
   "i18n-ally.keystyle": "flat",
   "i18n-ally.sortKeys": true,
   "i18n-ally.sourceLanguage": "en",
+  "i18n-ally.includeSubfolders": false,
+  "i18n-ally.fullReloadOnChanged": true,
+  "i18n-ally.extract.autoDetect": true,
+  "i18n-ally.annotations": false,
   "i18n-ally.localesPaths": [
-    "frontend/locales"
+    "packages/i18n/strings"
   ],
   "i18n-ally.enabledFrameworks": [
-    "vue"
+    "i18next",
+    "vue-sfc"
   ],
   "eslint.validate": [
     "vue",
     "javascript",
     "typescript"
   ],
-  "eslint.options": { 
-    "flags": ["unstable_ts_config"] 
-  },
   "eslint.format.enable": true,
   "eslint.useFlatConfig": true,
   "eslint.workingDirectories": [
@@ -49,11 +51,5 @@
   "vue.inlayHints.vBindShorthand": true,
   "vue.inlayHints.optionsWrapper": true,
   "vue.inlayHints.destructuredProps": true,
-  "sonarlint.output.showAnalyzerLogs": true,
-  "sonarlint.output.showVerboseLogs": true,
-  "sonarlint.connectedMode.project": {
-    "connectionId": "jellyfin-vue",
-    "projectKey": "jellyfin_jellyfin-vue"
-  },
-  "typescript.tsserver.experimental.enableProjectDiagnostics": true
+  "typescript.tsserver.experimental.enableProjectDiagnostics": false
 }

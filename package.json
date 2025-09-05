@@ -23,16 +23,36 @@
     "yarn": "yarn is not supported. Please use npm"
   },
   "scripts": {
-    "lint": "npm run lint --workspaces",
-    "lint:fix": "npm run lint:fix --workspaces",
-    "check:types": "npm run check:types --workspaces"
+    "lint": "npm run lint -ws --include-workspace-root=false",
+    "lint:fix": "npm run lint:fix -ws --include-workspace-root=false",
+    "check:types": "npm run check:types -ws --include-workspace-root=false",
+    "analyze:cycles": "npm run analyze:cycles -ws --include-workspace-root=false",
+    "test": "npm run test -ws --include-workspace-root=false"
+  },
+  "dependencies": {
+    "vue": "3.5.21"
   },
   "devDependencies": {
-    "@eslint/config-inspector": "0.5.6",
-    "@types/node": "22.10.1",
-    "eslint": "9.15.0",
-    "jiti": "2.4.0",
-    "typescript": "5.7.2",
-    "vue-tsc": "2.1.10"
+    "@chromatic-com/storybook": "4.1.1",
+    "@eslint/config-inspector": "1.2.0",
+    "@storybook/addon-a11y": "9.1.4",
+    "@storybook/vue3": "9.1.4",
+    "@storybook/vue3-vite": "9.1.4",
+    "@types/node": "24.3.0",
+    "eslint": "9.34.0",
+    "jiti": "2.5.1",
+    "storybook": "9.1.4",
+    "type-fest": "4.41.0",
+    "typescript": "5.9.2",
+    "unocss": "66.5.0",
+    "vite": "7.1.4",
+    "vitest": "3.2.4",
+    "vue-tsc": "3.0.6"
+  },
+  "peerDependencies": {
+    "@vue/shared": "*"
+  },
+  "overrides": {
+    "stylus": "0.64.0"
   }
 }
