@@ -23,7 +23,7 @@ env:
 jobs:
   cf-pages:
     name: Cloudflare Pages 📃
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-slim
     environment: 
       name: ${{ inputs.branch == 'master' && 'Production' || 'Preview' }}
       url: ${{ steps.cf.outputs.deployment-url }}
@@ -33,7 +33,7 @@ jobs:
 
     steps:
       - name: Download workflow artifact ⬇️
-        uses: actions/download-artifact@v6.0.0
+        uses: actions/download-artifact@v7.0.0
         with:
           name: ${{ inputs.artifact_name }}
           path: dist
